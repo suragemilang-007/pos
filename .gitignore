@@ -1,0 +1,30 @@
+# ── Environment (JANGAN PERNAH COMMIT) ──────────────────────
+.env
+.env.local
+.env.production
+
+# ── Laravel ──────────────────────────────────────────────────
+laravel-app/vendor/
+laravel-app/node_modules/
+laravel-app/storage/logs/*.log
+laravel-app/storage/framework/cache/
+laravel-app/storage/framework/sessions/
+laravel-app/storage/framework/views/
+laravel-app/bootstrap/cache/
+laravel-app/.env
+laravel-app/public/hot
+laravel-app/public/storage
+
+# ── Node.js ──────────────────────────────────────────────────
+kafka-service/node_modules/
+kafka-service/npm-debug.log
+kafka-service/.env
+
+# ── Docker volumes (data persisten, tidak perlu di Git) ──────
+mysql_data/
+kafka_data/
+
+# ── IDE ───────────────────────────────────────────────────────
+.vscode/settings.json
+.idea/
+*.DS_Store

@@ -1,0 +1,33 @@
+# ── Git ─────────────────────────────────────────────────────
+.git
+.gitignore
+
+# ── Documentation ────────────────────────────────────────────
+docs/
+*.md
+!laravel-app/README.md
+
+# ── Environment ──────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+
+# ── Node.js ──────────────────────────────────────────────────
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# ── PHP / Laravel ────────────────────────────────────────────
+laravel-app/vendor/
+laravel-app/node_modules/
+laravel-app/storage/logs/
+laravel-app/.env
+
+# ── IDE & OS ─────────────────────────────────────────────────
+.vscode/
+.idea/
+*.DS_Store
+Thumbs.db
+
+# ── Docker ───────────────────────────────────────────────────
+docker-compose.override.yml

@@ -1,0 +1,9 @@
+-- database/init/README.md
+-- Folder ini untuk file SQL yang dieksekusi otomatis saat MySQL container
+-- pertama kali dibuat (docker-entrypoint-initdb.d).
+--
+-- Gunakan untuk: initial data roles, user admin default, dll.
+-- File dieksekusi berurutan berdasarkan nama (01_roles.sql, 02_users.sql, dst)
+--
+-- CATATAN: Migration Laravel (php artisan migrate) tetap dijalankan terpisah.
+-- Folder ini hanya untuk data seed yang WAJIB ada sebelum Laravel bisa jalan.
