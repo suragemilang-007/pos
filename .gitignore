@@ -28,3 +28,6 @@ kafka_data/
 .vscode/settings.json
 .idea/
 *.DS_Store
+
+# Internal assistant instructions (jangan publish)
+**/CLAUDE.md
