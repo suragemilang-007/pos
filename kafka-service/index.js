@@ -1,93 +1,212 @@
+'use strict';
+
 /**
- * kafka-service/index.js
- * Entry point utama. Menjalankan semua komponen secara berurutan
- * dengan retry logic karena MySQL dan Kafka mungkin belum siap saat startup.
+ * kafka-service/index.js — Entry point utama.
+ *
+ * Urutan startup yang disengaja:
+ * 1. createPool()          → pastikan MySQL bisa diakses (retry sampai 5x)
+ * 2. ensureTopicsExist()   → buat topic Kafka jika belum ada (admin API)
+ * 3. wsServer.start()      → WebSocket harus ready sebelum consumer mulai push
+ * 4. httpServer.start()    → HTTP endpoint menerima event dari Laravel
+ * 5. *Consumer.start()     → consumer subscribe setelah topic dijamin ada
+ *
+ * Jika MySQL gagal di step 1, proses exit dengan kode 1 agar
+ * Docker bisa restart container secara otomatis (restart: unless-stopped).
  */
 
-const { Kafka } = require("kafkajs");
-const express = require("express");
-const http = require("http");
+const { kafka, TOPICS }                   = require('./config/kafka');
+const { createPool }                       = require('./config/database');
+const { start: startHttp }                 = require('./producers/httpServer');
+const { start: startWs }                   = require('./websocket/wsServer');
+const wsService                            = require('./services/wsService');
+const { start: startTransactionConsumer }  = require('./consumers/transactionConsumer');
+const { start: startPurchaseConsumer }     = require('./consumers/purchaseConsumer');
+const { start: startReturnConsumer }       = require('./consumers/returnConsumer');
 
-// ─── Konfigurasi dari environment (diset di docker-compose.yml) ──────────────
-const KAFKA_BROKERS = process.env.KAFKA_BROKERS || "kafka:9092";
-const KAFKA_CLIENT_ID = process.env.KAFKA_CLIENT_ID || "pos-grosir-client";
-const PRODUCER_HTTP_PORT = parseInt(process.env.PRODUCER_HTTP_PORT || "3000");
-const WS_PORT = parseInt(process.env.WS_PORT || "3001");
+// ─── Referensi untuk graceful shutdown ───────────────────────────────────────
+let httpServer    = null;
+let httpProducer  = null;
+let wsServer      = null;
+let consumers     = [];
 
-// ─── Kafka instance ───────────────────────────────────────────────────────────
-const kafka = new Kafka({
-  clientId: KAFKA_CLIENT_ID,
-  brokers: [KAFKA_BROKERS],
-  // Retry agresif karena Kafka mungkin belum sepenuhnya siap saat container start
-  retry: {
-    initialRetryTime: 3000,
-    retries: 10,
-  },
-});
+// ─────────────────────────────────────────────────────────────────────────────
+// STEP 2: Pastikan topic Kafka ada sebelum consumer start
+// ─────────────────────────────────────────────────────────────────────────────
 
-// ─── Express HTTP Server (Producer endpoint + health check) ──────────────────
-const app = express();
-app.use(express.json());
+/**
+ * Buat topic yang dibutuhkan jika belum ada.
+ *
+ * Mengapa tidak andalkan auto-create?
+ * Kafka auto-create topics saat ada produce/consume request, TAPI ada race condition:
+ * jika consumer mencoba subscribe sebelum topic terbentuk sempurna (leader election),
+ * KafkaJS akan throw "This server does not host this topic-partition".
+ *
+ * Dengan createTopics() + waitForLeaders: true, kita blokir sampai topic benar-benar
+ * siap termasuk leader partition-nya — baru consumer boleh mulai.
+ *
+ * createTopics() pada topic yang sudah ada = no-op (aman dipanggil berulang).
+ */
+async function ensureTopicsExist() {
+    const admin = kafka.admin();
 
-// Health check — dipakai Docker healthcheck di Dockerfile
-app.get("/health", (req, res) => {
-  res.json({ status: "ok", timestamp: new Date().toISOString() });
-});
+    try {
+        await admin.connect();
 
-// Placeholder endpoint publish — akan diisi di Fase 3
-app.post("/publish", (req, res) => {
-  console.log("[HTTP] Event diterima:", req.body?.eventType);
-  res.json({
-    status: "received",
-    message: "Belum terhubung ke Kafka Producer",
-  });
-});
+        const topicConfigs = [
+            {
+                topic:             TOPICS.TRANSACTION,
+                numPartitions:     3,  // 3 partisi = 3 consumer bisa parallel di masa depan
+                replicationFactor: 1,  // 1 = development (production: sesuaikan jumlah broker)
+            },
+            {
+                topic:             TOPICS.INVENTORY,
+                numPartitions:     3,
+                replicationFactor: 1,
+            },
+        ];
 
-const httpServer = http.createServer(app);
-httpServer.listen(PRODUCER_HTTP_PORT, () => {
-  console.log(`[HTTP] Producer endpoint aktif di port ${PRODUCER_HTTP_PORT}`);
-});
+        // { validateOnly: false } = benar-benar buat, bukan hanya validasi
+        // { waitForLeaders: true } = blokir sampai semua leader partition elected
+        const created = await admin.createTopics({
+            topics:         topicConfigs,
+            waitForLeaders: true,
+        });
 
-// ─── WebSocket Server (placeholder) ──────────────────────────────────────────
-const WebSocket = require("ws");
-const wss = new WebSocket.Server({ port: WS_PORT });
+        if (created) {
+            console.log(`[KAFKA] Topics dibuat: ${Object.values(TOPICS).join(', ')}`);
+        } else {
+            // created=false artinya topic sudah ada — bukan error
+            console.log(`[KAFKA] Topics sudah ada: ${Object.values(TOPICS).join(', ')}`);
+        }
 
-wss.on("connection", (ws) => {
-  console.log("[WS] Client terhubung");
-  ws.on("close", () => console.log("[WS] Client terputus"));
-});
-
-console.log(`[WS] WebSocket server aktif di port ${WS_PORT}`);
-
-// ─── Test koneksi Kafka ───────────────────────────────────────────────────────
-async function testKafkaConnection() {
-  const admin = kafka.admin();
-  try {
-    await admin.connect();
-    const topics = await admin.listTopics();
-    console.log("[KAFKA] Koneksi berhasil. Topics:", topics);
-    await admin.disconnect();
-  } catch (err) {
-    // Tidak crash — hanya log. Consumer akan retry sendiri saat dipanggil nanti.
-    console.warn("[KAFKA] Koneksi awal gagal (akan retry):", err.message);
-  }
+    } finally {
+        // Selalu disconnect admin — admin connection terpisah dari producer/consumer
+        await admin.disconnect().catch(() => {});
+    }
 }
 
-// ─── Graceful shutdown ────────────────────────────────────────────────────────
-process.on("SIGTERM", () => {
-  console.log("[SHUTDOWN] Menerima SIGTERM, menutup server...");
-  httpServer.close(() => process.exit(0));
+// ─────────────────────────────────────────────────────────────────────────────
+// MAIN STARTUP
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function main() {
+    console.log('════════════════════════════════════════');
+    console.log('  POS Kafka Service — Starting');
+    console.log(`  Kafka  : ${process.env.KAFKA_BROKERS        || 'kafka:9092'}`);
+    console.log(`  DB Host: ${process.env.DB_HOST               || 'mysql'}`);
+    console.log(`  HTTP   : port ${process.env.PRODUCER_HTTP_PORT || 3000}`);
+    console.log(`  WS     : port ${process.env.WS_PORT           || 3001}`);
+    console.log('════════════════════════════════════════');
+
+    // ── Step 1: MySQL pool ────────────────────────────────────────────────────
+    let pool;
+    try {
+        pool = await createPool();
+    } catch (err) {
+        console.error('[FATAL]', err.message);
+        process.exit(1);
+    }
+
+    // ── Step 2: Pastikan Kafka topics ada ────────────────────────────────────
+    // Dilakukan sebelum producer dan consumer init agar tidak ada race condition.
+    try {
+        await ensureTopicsExist();
+    } catch (err) {
+        // Kafka belum siap — jangan crash total, tapi consumer tidak akan aktif.
+        // Docker akan restart container dan retry lebih awal dari next start.
+        console.error('[KAFKA] Gagal memastikan topic (Kafka belum ready?):', err.message);
+        console.error('[KAFKA] Consumer tidak akan distart. Restart container untuk retry.');
+        // Lanjutkan startup HTTP + WS agar healthcheck tetap bisa dijawab
+    }
+
+    // ── Step 3: WebSocket server ──────────────────────────────────────────────
+    const ws = startWs();
+    wsServer = ws.wss;
+    console.log('[MAIN] WebSocket server siap');
+
+    // ── Step 4: HTTP server (Producer endpoint) ───────────────────────────────
+    const http   = await startHttp(pool, kafka);
+    httpServer   = http.server;
+    httpProducer = http.producer;
+    console.log('[MAIN] HTTP producer endpoint siap');
+
+    // ── Step 5: Kafka Consumers ───────────────────────────────────────────────
+    // Dijalankan paralel — masing-masing group ID berbeda, tidak ada konflik
+    // meski purchaseConsumer dan returnConsumer subscribe ke topic yang sama.
+    try {
+        const [trxConsumer, poConsumer, returConsumer] = await Promise.all([
+            startTransactionConsumer(kafka, pool, wsService),
+            startPurchaseConsumer(kafka, pool, wsService),
+            startReturnConsumer(kafka, pool, wsService),
+        ]);
+
+        consumers = [trxConsumer, poConsumer, returConsumer];
+        console.log('[MAIN] Semua Kafka consumer aktif');
+
+    } catch (err) {
+        console.error('[MAIN] Kafka consumer gagal start:', err.message);
+    }
+
+    console.log('════════════════════════════════════════');
+    console.log('  POS Kafka Service — Ready');
+    console.log('════════════════════════════════════════');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GRACEFUL SHUTDOWN
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function shutdown(signal) {
+    console.log(`\n[SHUTDOWN] Menerima ${signal}. Menutup semua koneksi...`);
+
+    if (httpProducer) {
+        try {
+            await httpProducer.disconnect();
+            console.log('[SHUTDOWN] Kafka producer disconnected');
+        } catch (err) {
+            console.error('[SHUTDOWN] Error disconnect producer:', err.message);
+        }
+    }
+
+    for (const consumer of consumers) {
+        try {
+            await consumer.disconnect();
+            console.log('[SHUTDOWN] Kafka consumer disconnected');
+        } catch (err) {
+            console.error('[SHUTDOWN] Error disconnect consumer:', err.message);
+        }
+    }
+
+    if (wsServer) {
+        wsServer.close(() => console.log('[SHUTDOWN] WebSocket server closed'));
+    }
+
+    if (httpServer) {
+        httpServer.close(() => {
+            console.log('[SHUTDOWN] HTTP server closed');
+            process.exit(0);
+        });
+    } else {
+        process.exit(0);
+    }
+
+    setTimeout(() => {
+        console.error('[SHUTDOWN] Force exit setelah 10 detik');
+        process.exit(1);
+    }, 10_000);
+}
+
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT',  () => shutdown('SIGINT'));
+
+process.on('uncaughtException', (err) => {
+    console.error('[UNCAUGHT]', err);
+    shutdown('uncaughtException');
 });
 
-process.on("SIGINT", () => {
-  console.log("[SHUTDOWN] Menerima SIGINT, menutup server...");
-  httpServer.close(() => process.exit(0));
+process.on('unhandledRejection', (reason) => {
+    console.error('[UNHANDLED REJECTION]', reason);
+    // Tidak shutdown — consumer Kafka retry transient errors secara internal
 });
 
-// ─── Start ────────────────────────────────────────────────────────────────────
-console.log("=== POS Kafka Service Starting ===");
-console.log(`Kafka Broker  : ${KAFKA_BROKERS}`);
-console.log(`HTTP Port     : ${PRODUCER_HTTP_PORT}`);
-console.log(`WebSocket Port: ${WS_PORT}`);
-
-testKafkaConnection();
+main();

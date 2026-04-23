@@ -35,4 +35,10 @@ return [
         ],
     ],
 
+    // Kafka Producer Service — Node.js HTTP endpoint
+    // Dalam Docker: http://kafka-service:3000 (nama service Docker, BUKAN localhost)
+    'kafka' => [
+        'producer_url' => env('KAFKA_PRODUCER_URL', 'http://kafka-service:3000'),
+    ],
+
 ];
