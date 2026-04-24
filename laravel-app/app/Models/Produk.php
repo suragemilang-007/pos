@@ -58,6 +58,15 @@ class Produk extends Model
         return $this->hasMany(ProdukSatuan::class, 'produk_id');
     }
 
+    // Satuan terurut: default tampil pertama, lalu urut isi ASC (pcs < renteng < karton)
+    // Dipakai ProdukService::getByKode() dan endpoint cekStok
+    public function satuanList(): HasMany
+    {
+        return $this->hasMany(ProdukSatuan::class, 'produk_id')
+            ->orderByDesc('is_default')
+            ->orderBy('isi');
+    }
+
     public function satuanDefault(): HasMany
     {
         // Shortcut untuk mengambil satuan yang is_default = 1
