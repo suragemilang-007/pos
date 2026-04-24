@@ -1,7 +1,10 @@
 <?php
 
 use App\Http\Controllers\Auth\AuthController;
+use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\ProdukController;
+use App\Http\Controllers\ProdukSatuanController;
+use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\TransaksiController;
 use Illuminate\Support\Facades\Route;
 
@@ -46,23 +49,38 @@ Route::middleware(['auth.jwt', 'role:kasir,owner'])->prefix('kasir')->group(func
     // SD-05: Detail transaksi untuk keperluan retur
     Route::get('/transaksi/{id}', [TransaksiController::class, 'show']);
 
+    // SD-06: Initial load stok semua produk aktif — real-time update via WebSocket
+    Route::get('/stok', [ProdukController::class, 'stokRealTime']);
+
     // SD-07: Cek stok produk by kode barcode — dipakai saat kasir scan
     Route::get('/produk/{kode}/stok', [ProdukController::class, 'cekStok']);
 
+    // SD-11, SD-12: CRUD Customer + riwayat belanja
+    // riwayat harus didefinisikan SEBELUM apiResource agar tidak diambil alih {customer} param
+    Route::get('/customer/{customer}/riwayat', [CustomerController::class, 'riwayatBelanja']);
+    Route::apiResource('/customer', CustomerController::class);
+
     // Placeholder — akan diisi saat fitur berikutnya diimplementasikan:
     // Route::post('/retur-penjualan', [ReturPenjualanController::class, 'store']);
-    // Route::get('/produk/{kode}/stok', [ProdukController::class, 'cekStok']);
-    // Route::get('/stok', [ProdukController::class, 'stokRealTime']);
-    // Route::apiResource('/customer', CustomerController::class);
-    // Route::get('/customer/{id}/riwayat', [CustomerController::class, 'riwayat']);
 });
 
 // ─────────────────────────────────────────────────────────
 // ADMIN GUDANG & OWNER
 // ─────────────────────────────────────────────────────────
 Route::middleware(['auth.jwt', 'role:admin_gudang,owner'])->prefix('gudang')->group(function () {
+    // SD-08: CRUD Produk — apiResource generates: index, store, show, update, destroy
+    Route::apiResource('/produk', ProdukController::class);
+
+    // SD-08: Sub-resource satuan per produk
+    Route::get   ('/produk/{produk}/satuan',                   [ProdukSatuanController::class, 'index']);
+    Route::post  ('/produk/{produk}/satuan',                   [ProdukSatuanController::class, 'store']);
+    Route::put   ('/produk/{produk}/satuan/{satuan}',          [ProdukSatuanController::class, 'update']);
+    Route::delete('/produk/{produk}/satuan/{satuan}',          [ProdukSatuanController::class, 'destroy']);
+
+    // SD-13: CRUD Supplier
+    Route::apiResource('/supplier', SupplierController::class);
+
     // Placeholder:
-    // Route::apiResource('/produk', ProdukController::class);
     // Route::post('/pembelian', [PembelianController::class, 'store']);
     // Route::post('/retur-pembelian', [ReturPembelianController::class, 'store']);
     // Route::apiResource('/supplier', SupplierController::class);
