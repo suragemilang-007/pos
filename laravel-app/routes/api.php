@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\CustomerController;
+use App\Http\Controllers\PembelianController;
 use App\Http\Controllers\ProdukController;
 use App\Http\Controllers\ProdukSatuanController;
 use App\Http\Controllers\SupplierController;
@@ -80,10 +81,13 @@ Route::middleware(['auth.jwt', 'role:admin_gudang,owner'])->prefix('gudang')->gr
     // SD-13: CRUD Supplier
     Route::apiResource('/supplier', SupplierController::class);
 
+    // SD-09: Pembelian / Restock → async via Kafka → 202
+    Route::post('/pembelian',       [PembelianController::class, 'store']);
+    Route::get ('/pembelian',       [PembelianController::class, 'index']);
+    Route::get ('/pembelian/{id}',  [PembelianController::class, 'show']);
+
     // Placeholder:
-    // Route::post('/pembelian', [PembelianController::class, 'store']);
     // Route::post('/retur-pembelian', [ReturPembelianController::class, 'store']);
-    // Route::apiResource('/supplier', SupplierController::class);
 });
 
 // ─────────────────────────────────────────────────────────
