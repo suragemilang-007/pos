@@ -45,6 +45,9 @@ Route::middleware('auth.jwt')->group(function () {
 // KASIR & OWNER
 // ─────────────────────────────────────────────────────────
 Route::middleware(['auth.jwt', 'role:kasir,owner'])->prefix('kasir')->group(function () {
+    // Dashboard kasir — ringkasan harian
+    Route::get('/ringkasan', [TransaksiController::class, 'ringkasan']);
+
     // SD-03: Input transaksi penjualan → async via Kafka → 202
     Route::post('/transaksi', [TransaksiController::class, 'store']);
 
@@ -81,6 +84,9 @@ Route::middleware(['auth.jwt', 'role:admin_gudang,owner'])->prefix('gudang')->gr
     Route::post  ('/produk/{produk}/satuan',                   [ProdukSatuanController::class, 'store']);
     Route::put   ('/produk/{produk}/satuan/{satuan}',          [ProdukSatuanController::class, 'update']);
     Route::delete('/produk/{produk}/satuan/{satuan}',          [ProdukSatuanController::class, 'destroy']);
+
+    // Dashboard gudang — ringkasan stok & pembelian
+    Route::get('/ringkasan', [PembelianController::class, 'ringkasan']);
 
     // SD-13: CRUD Supplier
     Route::apiResource('/supplier', SupplierController::class);

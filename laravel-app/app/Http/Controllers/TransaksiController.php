@@ -3,16 +3,69 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\Transaksi\StoreTransaksiRequest;
+use App\Models\Produk;
 use App\Models\Transaksi;
 use App\Services\Transaction\TransaksiService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class TransaksiController extends Controller
 {
     public function __construct(
         private readonly TransaksiService $transaksiService
     ) {}
+
+    /**
+     * GET /api/kasir/ringkasan — data untuk dashboard kasir.
+     * Kasir hanya melihat transaksi miliknya sendiri (user_id = auth_user_id).
+     */
+    public function ringkasan(Request $request): JsonResponse
+    {
+        $userId = $request->input('auth_user_id');
+        $today  = now()->toDateString();
+
+        // Transaksi kasir ini hari ini (COMPLETED saja — yang pending/failed tidak dihitung)
+        $transaksiHariIni = Transaksi::where('user_id', $userId)
+            ->whereDate('tanggal_transaksi', $today)
+            ->where('status', 'COMPLETED');
+
+        // 5 transaksi terakhir kasir ini (semua status agar kasir tahu ada yang pending)
+        $terakhir = Transaksi::where('user_id', $userId)
+            ->latest('created_at')
+            ->take(5)
+            ->get(['id', 'no_transaksi', 'tanggal_transaksi', 'total', 'metode_bayar', 'status']);
+
+        // Jam transaksi terakhir (COMPLETED)
+        $transaksiTerakhir = Transaksi::where('user_id', $userId)
+            ->where('status', 'COMPLETED')
+            ->latest('tanggal_transaksi')
+            ->first(['tanggal_transaksi']);
+
+        // Stok rendah: produk aktif dengan qty_stok <= stok_minimum
+        $stokRendah = Produk::where('status', 'aktif')
+            ->whereColumn('qty_stok', '<=', 'stok_minimum')
+            ->count();
+
+        return response()->json([
+            'data' => [
+                'transaksi_hari_ini'  => $transaksiHariIni->count(),
+                'omzet_hari_ini'      => (float) $transaksiHariIni->sum('total'),
+                'stok_rendah'         => $stokRendah,
+                'transaksi_terakhir_jam' => $transaksiTerakhir
+                    ? $transaksiTerakhir->tanggal_transaksi->format('H:i')
+                    : null,
+                'transaksi_terakhir'  => $terakhir->map(fn ($t) => [
+                    'id'           => $t->id,
+                    'no_transaksi' => $t->no_transaksi,
+                    'waktu'        => $t->tanggal_transaksi?->format('H:i'),
+                    'total'        => (float) $t->total,
+                    'metode_bayar' => $t->metode_bayar,
+                    'status'       => $t->status,
+                ])->values(),
+            ],
+        ]);
+    }
 
     /**
      * POST /api/kasir/transaksi — SD-03

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\Pembelian\StorePembelianRequest;
 use App\Models\Pembelian;
+use App\Models\Produk;
 use App\Services\Purchasing\PembelianService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -13,6 +14,54 @@ class PembelianController extends Controller
     public function __construct(
         private readonly PembelianService $pembelianService
     ) {}
+
+    /**
+     * GET /api/gudang/ringkasan — data untuk dashboard admin gudang.
+     */
+    public function ringkasan(Request $request): JsonResponse
+    {
+        $bulanIni   = now()->startOfMonth()->toDateString();
+        $hariIni    = now()->toDateString();
+
+        // Pembelian bulan ini (COMPLETED)
+        $totalBelanjaBuilan = (float) Pembelian::where('status', 'COMPLETED')
+            ->whereBetween('tanggal_pembelian', [$bulanIni, $hariIni])
+            ->sum('total');
+
+        // PO masih PENDING
+        $poPending = Pembelian::where('status', 'PENDING')->count();
+
+        // Produk aktif
+        $totalProdukAktif = Produk::where('status', 'aktif')->count();
+
+        // Stok rendah
+        $produkStokRendah = Produk::where('status', 'aktif')
+            ->whereColumn('qty_stok', '<=', 'stok_minimum')
+            ->count();
+
+        // 5 pembelian terakhir dengan nama supplier
+        $terakhir = Pembelian::with('supplier:id,nama_supplier')
+            ->latest('created_at')
+            ->take(5)
+            ->get(['id', 'supplier_id', 'no_pembelian', 'tanggal_pembelian', 'total', 'status']);
+
+        return response()->json([
+            'data' => [
+                'total_produk_aktif'    => $totalProdukAktif,
+                'produk_stok_rendah'    => $produkStokRendah,
+                'total_belanja_bulan'   => $totalBelanjaBuilan,
+                'po_pending'            => $poPending,
+                'pembelian_terakhir'    => $terakhir->map(fn ($p) => [
+                    'id'            => $p->id,
+                    'no_pembelian'  => $p->no_pembelian,
+                    'supplier'      => $p->supplier?->nama_supplier ?? '-',
+                    'tanggal'       => $p->tanggal_pembelian,
+                    'total'         => (float) $p->total,
+                    'status'        => $p->status,
+                ])->values(),
+            ],
+        ]);
+    }
 
     /**
      * GET /api/gudang/pembelian
