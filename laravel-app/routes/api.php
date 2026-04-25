@@ -2,9 +2,12 @@
 
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\CustomerController;
+use App\Http\Controllers\LaporanController;
 use App\Http\Controllers\PembelianController;
 use App\Http\Controllers\ProdukController;
 use App\Http\Controllers\ProdukSatuanController;
+use App\Http\Controllers\ReturPembelianController;
+use App\Http\Controllers\ReturPenjualanController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\TransaksiController;
 use Illuminate\Support\Facades\Route;
@@ -61,8 +64,8 @@ Route::middleware(['auth.jwt', 'role:kasir,owner'])->prefix('kasir')->group(func
     Route::get('/customer/{customer}/riwayat', [CustomerController::class, 'riwayatBelanja']);
     Route::apiResource('/customer', CustomerController::class);
 
-    // Placeholder — akan diisi saat fitur berikutnya diimplementasikan:
-    // Route::post('/retur-penjualan', [ReturPenjualanController::class, 'store']);
+    // SD-05: Retur penjualan → async via Kafka → 202
+    Route::post('/retur-penjualan', [ReturPenjualanController::class, 'store']);
 });
 
 // ─────────────────────────────────────────────────────────
@@ -86,15 +89,16 @@ Route::middleware(['auth.jwt', 'role:admin_gudang,owner'])->prefix('gudang')->gr
     Route::get ('/pembelian',       [PembelianController::class, 'index']);
     Route::get ('/pembelian/{id}',  [PembelianController::class, 'show']);
 
-    // Placeholder:
-    // Route::post('/retur-pembelian', [ReturPembelianController::class, 'store']);
+    // SD-10: Retur pembelian → async via Kafka → 202
+    Route::post('/retur-pembelian', [ReturPembelianController::class, 'store']);
 });
 
 // ─────────────────────────────────────────────────────────
 // OWNER
 // ─────────────────────────────────────────────────────────
 Route::middleware(['auth.jwt', 'role:owner'])->prefix('owner')->group(function () {
-    // Placeholder:
-    // Route::get('/laporan/{jenis}', [LaporanController::class, 'generate']);
-    // Route::apiResource('/user', UserController::class);
+    // SD-14: Laporan — export harus didefinisikan SEBELUM generate agar
+    // '{jenis}/export' tidak diinterpretasikan sebagai {jenis} = 'penjualan' dan param lain
+    Route::get('/laporan/{jenis}/export', [LaporanController::class, 'export']);
+    Route::get('/laporan/{jenis}',        [LaporanController::class, 'generate']);
 });
