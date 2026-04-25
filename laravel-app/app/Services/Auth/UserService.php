@@ -9,6 +9,39 @@ class UserService
 {
     public function __construct(private readonly SessionService $sessionService) {}
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // MANAJEMEN USER (hanya owner)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Buat user baru.
+     * password_hash di-set secara eksplisit (tidak via mass assignment) karena
+     * kolom ini sengaja dikecualikan dari $fillable sebagai lapisan perlindungan.
+     */
+    public function create(array $data): User
+    {
+        $user                = new User();
+        $user->role_id       = $data['role_id'];
+        $user->nama          = $data['nama'];
+        $user->username      = $data['username'];
+        $user->password_hash = Hash::make($data['password']);
+        $user->status        = 'aktif';
+        $user->save();
+
+        return $user->load('role');
+    }
+
+    /**
+     * Update data user — tidak termasuk password (ada endpoint khusus).
+     */
+    public function update(int $userId, array $data): bool
+    {
+        // Buang password jika ada — harus lewat resetPassword()
+        unset($data['password'], $data['password_hash']);
+
+        return (bool) User::where('id', $userId)->update($data);
+    }
+
     /**
      * Proses login: verifikasi kredensial → buat session → kembalikan token + info user.
      *

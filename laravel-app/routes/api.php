@@ -4,6 +4,7 @@ use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\LaporanController;
 use App\Http\Controllers\PembelianController;
+use App\Http\Controllers\UserController;
 use App\Http\Controllers\ProdukController;
 use App\Http\Controllers\ProdukSatuanController;
 use App\Http\Controllers\ReturPembelianController;
@@ -97,8 +98,13 @@ Route::middleware(['auth.jwt', 'role:admin_gudang,owner'])->prefix('gudang')->gr
 // OWNER
 // ─────────────────────────────────────────────────────────
 Route::middleware(['auth.jwt', 'role:owner'])->prefix('owner')->group(function () {
-    // SD-14: Laporan — export harus didefinisikan SEBELUM generate agar
-    // '{jenis}/export' tidak diinterpretasikan sebagai {jenis} = 'penjualan' dan param lain
+    // SD-14: Laporan
     Route::get('/laporan/{jenis}/export', [LaporanController::class, 'export']);
     Route::get('/laporan/{jenis}',        [LaporanController::class, 'generate']);
+
+    // SD-15: Manajemen User
+    // PATCH routes khusus harus didefinisikan SEBELUM apiResource agar tidak bentrok
+    Route::patch('/user/{user}/nonaktifkan',    [UserController::class, 'nonaktifkan']);
+    Route::patch('/user/{user}/reset-password', [UserController::class, 'resetPassword']);
+    Route::apiResource('/user', UserController::class)->except(['destroy']);
 });
