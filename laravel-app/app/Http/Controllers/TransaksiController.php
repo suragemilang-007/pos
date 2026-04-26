@@ -17,6 +17,57 @@ class TransaksiController extends Controller
     ) {}
 
     /**
+     * GET /api/kasir/transaksi/cari?q={no_transaksi atau id} — dicari untuk keperluan retur.
+     * Mendukung pencarian by no_transaksi (TRX-YYYYMMDD-XXXXX) atau numeric id.
+     * Hanya transaksi COMPLETED yang dikembalikan — sesuai validasi AD-05.
+     */
+    public function cariTransaksi(Request $request): JsonResponse
+    {
+        $q = trim($request->input('q', ''));
+
+        if (empty($q)) {
+            return response()->json(['message' => 'Parameter pencarian wajib diisi'], 422);
+        }
+
+        // Cari by numeric id ATAU by no_transaksi (format TRX-...)
+        $transaksi = is_numeric($q)
+            ? Transaksi::with(['details.produk:id,nama_produk', 'user:id,nama'])
+                ->find((int) $q)
+            : Transaksi::with(['details.produk:id,nama_produk', 'user:id,nama'])
+                ->where('no_transaksi', $q)
+                ->first();
+
+        if (! $transaksi) {
+            return response()->json(['message' => 'Transaksi tidak ditemukan'], 404);
+        }
+
+        if ($transaksi->status !== 'COMPLETED') {
+            return response()->json([
+                'message' => "Transaksi berstatus {$transaksi->status} — hanya transaksi COMPLETED yang bisa diretur",
+            ], 400);
+        }
+
+        return response()->json([
+            'data' => [
+                'id'                => $transaksi->id,
+                'no_transaksi'      => $transaksi->no_transaksi,
+                'tanggal_transaksi' => $transaksi->tanggal_transaksi,
+                'total'             => (float) $transaksi->total,
+                'kasir'             => $transaksi->user?->nama,
+                'items'             => $transaksi->details->map(fn ($d) => [
+                    'produk_id'    => $d->produk_id,
+                    'nama_produk'  => $d->produk?->nama_produk,
+                    'nama_satuan'  => $d->nama_satuan,
+                    'isi_satuan'   => $d->isi_satuan,
+                    'qty'          => $d->qty,
+                    'harga_satuan' => (float) $d->harga_satuan,
+                    'subtotal'     => (float) $d->subtotal,
+                ])->values(),
+            ],
+        ]);
+    }
+
+    /**
      * GET /api/kasir/ringkasan — data untuk dashboard kasir.
      * Kasir hanya melihat transaksi miliknya sendiri (user_id = auth_user_id).
      */

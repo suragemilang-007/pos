@@ -54,6 +54,9 @@ Route::middleware(['auth.jwt', 'role:kasir,owner'])->prefix('kasir')->group(func
     // SD-04: Cetak struk — hanya transaksi COMPLETED
     Route::get('/transaksi/{id}/struk', [TransaksiController::class, 'struk']);
 
+    // Cari transaksi by no_transaksi atau id (untuk form retur) — harus sebelum /{id}
+    Route::get('/transaksi/cari', [TransaksiController::class, 'cariTransaksi']);
+
     // SD-05: Detail transaksi untuk keperluan retur
     Route::get('/transaksi/{id}', [TransaksiController::class, 'show']);
 
