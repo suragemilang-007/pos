@@ -146,10 +146,17 @@ function connectWebSocket() {
     wsConn.addEventListener('open', function () {
         setWsState('connected');
         if (wsTimer) { clearTimeout(wsTimer); wsTimer = null; }
-        // Subscribe ke channel personal user untuk notifikasi transaksi
+
+        // Subscribe stok-global via MESSAGE — URL param ?channel= diabaikan server (message-based protocol)
+        wsConn.send(JSON.stringify({ action: 'subscribe', channel: 'stok-global' }));
+
+        // Subscribe ke channel personal user untuk notifikasi transaksi/retur
         if (authUser && authUser.id) {
             wsConn.send(JSON.stringify({ action: 'subscribe', channel: 'user-' + authUser.id }));
         }
+
+        // Setelah reconnect: cek apakah ada transaksi pending yang mungkin selesai saat WS terputus
+        if (typeof onWsReconnect === 'function') onWsReconnect();
     });
 
     wsConn.addEventListener('message', function (e) {

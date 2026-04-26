@@ -245,6 +245,10 @@ class ProdukController extends Controller
             'qty_stok'         => $p->qty_stok,
             'stok_minimum'     => $p->stok_minimum,
             'status'           => $p->status,
+            // has_transaksi dipakai frontend untuk menentukan pesan konfirmasi hapus (AD-08):
+            // true  → soft delete "Produk akan dinonaktifkan"
+            // false → hard delete "Produk akan dihapus permanen"
+            'has_transaksi'    => $this->produkService->hasTransaksi($p->id),
             'satuan_tersedia'  => $this->produkSatuanService->buildSatuanTersedia($p),
         ];
     }

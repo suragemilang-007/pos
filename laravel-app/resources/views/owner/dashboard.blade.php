@@ -321,6 +321,11 @@ function renderTabel(rows, ringkasan) {
         </tr>`).join('');
 }
 
+// ── WebSocket real-time ───────────────────────────────────────────────────────
+// Refresh dashboard owner setiap kali ada transaksi/pembelian/retur selesai diproses
+// stok-updated di-dispatch oleh app.blade.php saat menerima stock.updated dari Consumer
+document.addEventListener('stok-updated', function () { loadDashboard(); });
+
 // Regenerate chart saat dark mode toggle agar warna grid menyesuaikan
 document.getElementById('omzetChart')?.addEventListener('toggle-theme', function () {
     if (chartInstance) {

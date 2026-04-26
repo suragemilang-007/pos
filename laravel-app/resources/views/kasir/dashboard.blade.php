@@ -167,20 +167,10 @@ function renderTabel(rows) {
         </tr>`).join('');
 }
 
-// ── WebSocket real-time: update badge stok rendah saat ada stock.updated ──────
-// Event ini di-emit oleh app.blade.php saat menerima push 'stock.updated' dari Consumer
-document.addEventListener('stok-updated', async function () {
-    try {
-        const { data } = await axios.get('/api/kasir/ringkasan');
-        setStokRendah(data.data.stok_rendah);
-    } catch (_) {}
-});
-
-// ── WebSocket real-time: refresh tabel saat transaksi selesai diproses ────────
-document.addEventListener('stok-updated', function () {
-    // Reload ringkasan untuk update widget transaksi hari ini juga
-    loadRingkasan();
-});
+// ── WebSocket real-time ───────────────────────────────────────────────────────
+// stok-updated = setelah ANY transaksi/pembelian/retur selesai diproses Consumer
+// Satu listener cukup — loadRingkasan() sudah mencakup setStokRendah()
+document.addEventListener('stok-updated', function () { loadRingkasan(); });
 
 document.addEventListener('DOMContentLoaded', loadRingkasan);
 </script>

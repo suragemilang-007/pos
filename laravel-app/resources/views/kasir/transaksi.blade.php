@@ -279,6 +279,44 @@ let currentProduk   = null;
 let selectedCustomer= null;
 let pendingTrxId    = null;
 let strutHtml       = '';
+let pollTimer       = null;  // fallback polling saat WS miss event
+
+// ── Polling Fallback ──────────────────────────────────────────────────────────
+// Diaktifkan setelah 202 diterima. Cek status transaksi setiap 3 detik.
+// Menangani kasus WS reconnect (race condition antara consumer push dan WS disconnect).
+function startPolling() {
+    if (pollTimer) return;
+    pollTimer = setInterval(async function () {
+        if (!pendingTrxId) { stopPolling(); return; }
+        try {
+            const { data } = await axios.get(`/api/kasir/transaksi/${pendingTrxId}`);
+            const status   = data.data?.status;
+            if (status === 'COMPLETED') {
+                stopPolling();
+                document.getElementById('status-kafka').classList.add('hidden');
+                tampilkanSukses(pendingTrxId);
+            } else if (status === 'FAILED') {
+                stopPolling();
+                document.getElementById('status-kafka').classList.add('hidden');
+                document.getElementById('btn-proses').disabled = false;
+                document.getElementById('lbl-proses').textContent = 'Proses Transaksi';
+                const id = pendingTrxId;
+                pendingTrxId = null;
+                tampilkanError(`Transaksi #${id} gagal (stok tidak mencukupi)`);
+            }
+            // Status masih PENDING → tunggu interval berikutnya
+        } catch (_) { /* abaikan error jaringan, coba lagi di interval berikutnya */ }
+    }, 3000);
+}
+
+function stopPolling() {
+    if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+}
+
+// Dipanggil oleh layout saat WS berhasil reconnect — cek pending transaction
+function onWsReconnect() {
+    if (pendingTrxId) startPolling();
+}
 
 // ── Scan / Cari Produk ────────────────────────────────────────────────────────
 document.getElementById('input-kode').addEventListener('keydown', function (e) {
@@ -470,6 +508,7 @@ function hapusItem(idx) {
 }
 
 function resetKeranjang() {
+    stopPolling();
     cart = [];
     selectedCustomer = null;
     pendingTrxId = null;
@@ -575,6 +614,7 @@ async function prosesTransaksi() {
         document.getElementById('status-kafka').classList.remove('hidden');
         document.getElementById('btn-proses').disabled = true;
         document.getElementById('lbl-proses').textContent = 'Menunggu Konfirmasi...';
+        startPolling(); // Mulai polling sebagai fallback jika WS miss event
     } catch (err) {
         setLoading(false);
         tampilkanError(err.response?.data?.message || 'Gagal memproses transaksi');
@@ -595,7 +635,9 @@ function setLoading(loading) {
 
 document.addEventListener('ws:transaction-completed', function (e) {
     const data = e.detail;
-    if (data.transaksiId === pendingTrxId || pendingTrxId) {
+    // Cukup cek pendingTrxId — jika ada transaksi pending, anggap ini miliknya
+    if (pendingTrxId) {
+        stopPolling();
         document.getElementById('status-kafka').classList.add('hidden');
         tampilkanSukses(data.transaksiId || pendingTrxId);
     }
@@ -603,7 +645,8 @@ document.addEventListener('ws:transaction-completed', function (e) {
 
 document.addEventListener('ws:transaction-failed', function (e) {
     const data = e.detail;
-    if (data.transaksiId === pendingTrxId || pendingTrxId) {
+    if (pendingTrxId) {
+        stopPolling();
         document.getElementById('status-kafka').classList.add('hidden');
         document.getElementById('btn-proses').disabled = false;
         document.getElementById('lbl-proses').textContent = 'Proses Transaksi';

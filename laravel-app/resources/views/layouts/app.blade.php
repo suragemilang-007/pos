@@ -178,6 +178,9 @@ function connectWebSocket() {
         setWsState('connected');
         if (wsTimer) { clearTimeout(wsTimer); wsTimer = null; }
 
+        // Subscribe stok-global via MESSAGE — URL param ?channel= diabaikan server (message-based protocol)
+        wsConn.send(JSON.stringify({ action: 'subscribe', channel: 'stok-global' }));
+
         // Subscribe ke channel personal user untuk notifikasi transaksi/retur
         if (authUser && authUser.id) {
             wsConn.send(JSON.stringify({ action: 'subscribe', channel: 'user-' + authUser.id }));
