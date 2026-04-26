@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\CustomerController;
+use App\Http\Controllers\KategoriProdukController;
 use App\Http\Controllers\LaporanController;
 use App\Http\Controllers\PembelianController;
 use App\Http\Controllers\UserController;
@@ -42,6 +43,13 @@ Route::middleware('auth.jwt')->group(function () {
 });
 
 // ─────────────────────────────────────────────────────────
+// KATEGORI — dropdown ringan (kasir, gudang, owner)
+// GET /api/kategori → [{id, nama_kategori}] untuk form produk & filter
+// ─────────────────────────────────────────────────────────
+Route::middleware(['auth.jwt', 'role:kasir,admin_gudang,owner'])
+    ->get('/kategori', [KategoriProdukController::class, 'index']);
+
+// ─────────────────────────────────────────────────────────
 // KASIR & OWNER
 // ─────────────────────────────────────────────────────────
 Route::middleware(['auth.jwt', 'role:kasir,owner'])->prefix('kasir')->group(function () {
@@ -79,6 +87,12 @@ Route::middleware(['auth.jwt', 'role:kasir,owner'])->prefix('kasir')->group(func
 // ADMIN GUDANG & OWNER
 // ─────────────────────────────────────────────────────────
 Route::middleware(['auth.jwt', 'role:admin_gudang,owner'])->prefix('gudang')->group(function () {
+    // SD-16: Manajemen Kategori (dengan jumlah_produk)
+    Route::get   ('/kategori',      [KategoriProdukController::class, 'indexWithCount']);
+    Route::post  ('/kategori',      [KategoriProdukController::class, 'store']);
+    Route::put   ('/kategori/{id}', [KategoriProdukController::class, 'update']);
+    Route::delete('/kategori/{id}', [KategoriProdukController::class, 'destroy']);
+
     // SD-08: CRUD Produk — apiResource generates: index, store, show, update, destroy
     Route::apiResource('/produk', ProdukController::class);
 
