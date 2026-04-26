@@ -1,65 +1,11 @@
-<!DOCTYPE html>
-<html lang="id" class="h-full">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kasir — Toko Melati</title>
+@extends('layouts.kasir')
 
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+@section('title', 'Transaksi Baru')
+@section('page-title', 'Transaksi')
 
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: { extend: { fontFamily: { sans: ['Inter','ui-sans-serif','system-ui'] } } }
-        }
-    </script>
-    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-
-    <script>(function(){if(localStorage.getItem('theme')==='dark')document.documentElement.classList.add('dark');})();</script>
-</head>
-
-{{-- Layout full-screen split — tidak pakai sidebar (§10.5 Kasir Layout) --}}
-<body class="h-full bg-gray-100 dark:bg-gray-900 font-sans antialiased overflow-hidden">
-
-{{-- ══ HEADER KASIR (h-14) ══════════════════════════════════════════════════════ --}}
-<header class="h-14 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-4 shrink-0">
-    <div class="flex items-center gap-3">
-        <div class="w-7 h-7 bg-indigo-600 rounded-lg flex items-center justify-center shrink-0">
-            <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
-            </svg>
-        </div>
-        <span class="text-sm font-bold text-gray-900 dark:text-gray-100">Toko Melati</span>
-        <span class="hidden sm:block text-xs text-gray-400 dark:text-gray-500">/ Transaksi</span>
-    </div>
-
-    <div class="flex items-center gap-3">
-        {{-- WS indicator --}}
-        <div class="flex items-center gap-1.5" title="Status real-time">
-            <span class="relative flex h-2 w-2">
-                <span id="ws-ping" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-gray-300 opacity-75"></span>
-                <span id="ws-dot"  class="relative inline-flex rounded-full h-2 w-2 bg-gray-300"></span>
-            </span>
-            <span id="ws-label" class="hidden sm:block text-xs text-gray-500 dark:text-gray-400">Menghubungkan...</span>
-        </div>
-
-        {{-- Nama kasir --}}
-        <span id="nama-kasir" class="text-xs font-medium text-gray-600 dark:text-gray-400 hidden sm:block">—</span>
-
-        {{-- Dark mode toggle --}}
-        <button onclick="toggleTheme()" class="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
-            <svg class="hidden dark:block w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707M17.657 17.657l-.707-.707M6.343 6.343l-.707-.707M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-            <svg class="block dark:hidden w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
-        </button>
-
-        <a href="/kasir" class="text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 transition-colors">← Dashboard</a>
-    </div>
-</header>
-
-{{-- ══ SPLIT PANEL ══════════════════════════════════════════════════════════════ --}}
-<div class="flex" style="height: calc(100vh - 3.5rem)">
+@section('content')
+{{-- ══ SPLIT PANEL (flex row memenuhi sisa viewport setelah header h-14) ══════ --}}
+<div class="flex h-full">
 
     {{-- ── PANEL KIRI (~60%): Scan + Info Produk + Customer ──────────────────── --}}
     <div class="flex-1 flex flex-col overflow-y-auto bg-gray-50 dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 p-4 gap-4">
@@ -90,7 +36,7 @@
                     <p id="produk-kode" class="text-xs font-mono text-gray-400 dark:text-gray-500"></p>
                     <h3 id="produk-nama" class="text-base font-semibold text-gray-900 dark:text-gray-100 mt-0.5"></h3>
                 </div>
-                {{-- Badge stok (update real-time) --}}
+                {{-- Badge stok (diupdate real-time via WS) --}}
                 <span id="badge-stok" class="hidden text-xs font-semibold px-2.5 py-1 rounded-full"></span>
             </div>
 
@@ -101,9 +47,8 @@
                     <select id="select-satuan"
                         class="block w-full px-3 py-2 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
                         onchange="onSatuanChange()">
-                        {{-- diisi JS --}}
+                        {{-- Diisi JS setelah scan produk --}}
                     </select>
-                    {{-- Info hemat --}}
                     <p id="info-hemat" class="hidden text-xs text-green-600 dark:text-green-400 font-medium"></p>
                 </div>
 
@@ -149,7 +94,7 @@
                     class="block w-full px-3 py-2 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
                     oninput="searchCustomer(this.value)" onfocus="showCustomerDrop()"
                     onblur="setTimeout(hideCustomerDrop, 200)">
-                {{-- Dropdown hasil pencarian --}}
+                {{-- Dropdown hasil pencarian customer --}}
                 <div id="dropdown-customer"
                     class="absolute z-10 mt-1 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-48 overflow-y-auto hidden">
                     <div id="customer-list"></div>
@@ -158,7 +103,7 @@
             {{-- Customer terpilih --}}
             <div id="customer-selected" class="hidden mt-2 flex items-center justify-between">
                 <span id="customer-nama" class="text-sm font-medium text-indigo-600 dark:text-indigo-400"></span>
-                <button onclick="clearCustomer()" class="text-xs text-gray-400 hover:text-red-500 transition-colors">×Hapus</button>
+                <button onclick="clearCustomer()" class="text-xs text-gray-400 hover:text-red-500 transition-colors">× Hapus</button>
             </div>
         </div>
 
@@ -191,7 +136,7 @@
             </div>
         </div>
 
-        {{-- Footer: total + bayar + tombol proses --}}
+        {{-- Footer: total + metode bayar + tombol proses --}}
         <div class="border-t border-gray-200 dark:border-gray-700 p-4 space-y-3 shrink-0">
 
             {{-- Summary --}}
@@ -219,7 +164,7 @@
                 @endforeach
             </div>
 
-            {{-- Input bayar (untuk tunai) --}}
+            {{-- Input uang diterima (hanya untuk tunai) --}}
             <div id="panel-bayar" class="space-y-1">
                 <label class="text-xs text-gray-500 dark:text-gray-400">Uang Diterima</label>
                 <input id="input-bayar" type="number" min="0" placeholder="0"
@@ -267,28 +212,29 @@
 {{-- ══ MODAL STRUK ══════════════════════════════════════════════════════════════ --}}
 <div id="modal-struk" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
     <div class="w-full max-w-md bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden">
-        {{-- Header modal --}}
         <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-green-50 dark:bg-green-900/20">
             <div class="flex items-center gap-2">
                 <span class="text-green-600 dark:text-green-400 text-xl">✓</span>
                 <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100">Transaksi Berhasil!</h3>
             </div>
             <button onclick="tutupModal()" class="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-lg">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
             </button>
         </div>
-        {{-- Body --}}
         <div class="px-6 py-4">
             <p id="modal-no-trx" class="text-sm text-gray-600 dark:text-gray-400">No. Transaksi: —</p>
             <div id="modal-struk-konten" class="mt-3 text-xs text-gray-500 dark:text-gray-400">
                 Struk sedang dimuat...
             </div>
         </div>
-        {{-- Footer --}}
         <div class="flex gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
             <button onclick="cetakStruk()"
                 class="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-lg transition-colors">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+                </svg>
                 Cetak Struk
             </button>
             <button onclick="transaksiBerikutnya()"
@@ -320,44 +266,21 @@
     </div>
 </div>
 
-{{-- ══ HIDDEN IFRAME untuk cetak struk ══════════════════════════════════════════ --}}
+{{-- Hidden iframe untuk cetak struk via print() --}}
 <iframe id="iframe-struk" class="hidden" title="Struk"></iframe>
+@endsection
 
+@push('scripts')
 <script>
-// ── AUTH ──────────────────────────────────────────────────────────────────────
-const authToken = localStorage.getItem('auth_token');
-const authUser  = JSON.parse(localStorage.getItem('auth_user') || 'null');
-const authRole  = localStorage.getItem('auth_role');
+// ── State ─────────────────────────────────────────────────────────────────────
+// authToken, authUser, authRole, axios config, wsConn, toggleTheme → sudah di layouts/kasir.blade.php
+let cart            = [];
+let currentProduk   = null;
+let selectedCustomer= null;
+let pendingTrxId    = null;
+let strutHtml       = '';
 
-if (!authToken || !authUser) { window.location.replace('/login'); }
-if (!['kasir', 'owner'].includes(authRole)) { window.location.replace('/login'); }
-
-axios.defaults.headers.common['Authorization'] = 'Bearer ' + authToken;
-
-axios.interceptors.response.use(res => res, err => {
-    if (err.response?.status === 401) {
-        ['auth_token','auth_user','auth_role'].forEach(k => localStorage.removeItem(k));
-        window.location.replace('/login');
-    }
-    return Promise.reject(err);
-});
-
-document.getElementById('nama-kasir').textContent = authUser?.nama || '—';
-
-// ── STATE ─────────────────────────────────────────────────────────────────────
-let cart           = [];        // item keranjang
-let currentProduk  = null;      // produk sedang ditampilkan
-let selectedCustomer = null;    // {id, nama}
-let pendingTrxId   = null;      // id setelah 202
-let strutHtml      = '';        // HTML struk untuk cetak
-
-// ── DARK MODE ─────────────────────────────────────────────────────────────────
-function toggleTheme() {
-    const isDark = document.documentElement.classList.toggle('dark');
-    localStorage.setItem('theme', isDark ? 'dark' : 'light');
-}
-
-// ── SCAN / CARI PRODUK ────────────────────────────────────────────────────────
+// ── Scan / Cari Produk ────────────────────────────────────────────────────────
 document.getElementById('input-kode').addEventListener('keydown', function (e) {
     if (e.key === 'Enter') cariProduk();
 });
@@ -376,8 +299,7 @@ async function cariProduk() {
         document.getElementById('input-kode').value = '';
         document.getElementById('input-qty').focus();
     } catch (err) {
-        const msg = err.response?.data?.message || 'Produk tidak ditemukan';
-        setErrScan(msg);
+        setErrScan(err.response?.data?.message || 'Produk tidak ditemukan');
     }
 }
 
@@ -385,7 +307,6 @@ function tampilkanProduk(p) {
     document.getElementById('produk-kode').textContent = p.kode_produk;
     document.getElementById('produk-nama').textContent = p.nama_produk;
 
-    // Isi dropdown satuan
     const sel = document.getElementById('select-satuan');
     sel.innerHTML = p.satuan_tersedia.map(s =>
         `<option value="${s.id}"
@@ -406,39 +327,35 @@ function tampilkanProduk(p) {
 
 function onSatuanChange() {
     if (!currentProduk) return;
-    const opt   = document.getElementById('select-satuan').selectedOptions[0];
+    const opt = document.getElementById('select-satuan').selectedOptions[0];
     if (!opt) return;
 
-    const harga    = parseFloat(opt.dataset.harga);
-    const stok     = parseInt(opt.dataset.stok);
-    const hemat    = parseFloat(opt.dataset.hemat);
-    const namaSat  = opt.dataset.nama;
+    const harga   = parseFloat(opt.dataset.harga);
+    const stok    = parseInt(opt.dataset.stok);
+    const hemat   = parseFloat(opt.dataset.hemat);
+    const namaSat = opt.dataset.nama;
 
-    // Update harga display
     document.getElementById('info-harga').textContent = 'Rp ' + fmt(harga);
+    document.getElementById('info-stok-satuan').textContent = `Tersedia: ${stok} ${namaSat}`;
 
-    // Stok tersedia untuk satuan ini
-    const infoStok = document.getElementById('info-stok-satuan');
-    infoStok.textContent = `Tersedia: ${stok} ${namaSat}`;
-
-    // Badge stok (logika warning di JS — bukan Backend, sesuai AD-07)
+    // Badge stok (§10.6E) — warning jika menipis, merah jika habis
     const badge = document.getElementById('badge-stok');
+    const btnTambah = document.getElementById('btn-tambah');
     if (stok === 0) {
         badge.textContent = 'Stok Habis';
         badge.className   = 'text-xs font-semibold px-2.5 py-1 rounded-full bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400';
         badge.classList.remove('hidden');
-        document.getElementById('btn-tambah').disabled = true;
+        btnTambah.disabled = true;
     } else if (stok <= 5) {
         badge.textContent = 'Stok Menipis';
         badge.className   = 'text-xs font-semibold px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400';
         badge.classList.remove('hidden');
-        document.getElementById('btn-tambah').disabled = false;
+        btnTambah.disabled = false;
     } else {
         badge.classList.add('hidden');
-        document.getElementById('btn-tambah').disabled = false;
+        btnTambah.disabled = false;
     }
 
-    // Info hemat
     const infoHemat = document.getElementById('info-hemat');
     if (hemat > 0) {
         infoHemat.textContent = `Hemat ${hemat}% dibanding satuan dasar`;
@@ -451,30 +368,26 @@ function onSatuanChange() {
 }
 
 function onQtyChange() {
-    const opt      = document.getElementById('select-satuan').selectedOptions[0];
+    const opt = document.getElementById('select-satuan').selectedOptions[0];
     if (!opt) return;
     const harga    = parseFloat(opt.dataset.harga);
     const qty      = parseInt(document.getElementById('input-qty').value) || 1;
-    const subtotal = harga * qty;
-    document.getElementById('info-subtotal').textContent = 'Rp ' + fmt(subtotal);
+    document.getElementById('info-subtotal').textContent = 'Rp ' + fmt(harga * qty);
 }
 
-// ── KERANJANG ─────────────────────────────────────────────────────────────────
+// ── Keranjang ─────────────────────────────────────────────────────────────────
 function tambahKeKeranjang() {
     if (!currentProduk) return;
 
-    const opt      = document.getElementById('select-satuan').selectedOptions[0];
-    const qty      = parseInt(document.getElementById('input-qty').value) || 1;
-    const harga    = parseFloat(opt.dataset.harga);
-    const stok     = parseInt(opt.dataset.stok);
+    const opt   = document.getElementById('select-satuan').selectedOptions[0];
+    const qty   = parseInt(document.getElementById('input-qty').value) || 1;
+    const harga = parseFloat(opt.dataset.harga);
+    const stok  = parseInt(opt.dataset.stok);
 
     if (stok === 0) return;
-    if (qty > stok) {
-        setErrScan(`Stok ${opt.dataset.nama} hanya ${stok} unit`);
-        return;
-    }
+    if (qty > stok) { setErrScan(`Stok ${opt.dataset.nama} hanya ${stok} unit`); return; }
 
-    // Cek duplikat (produk + satuan sama → tambah qty)
+    // Jika produk + satuan sudah ada di keranjang → tambah qty saja
     const existing = cart.find(c =>
         c.produk_id === currentProduk.id && c.produk_satuan_id === parseInt(opt.value)
     );
@@ -483,16 +396,16 @@ function tambahKeKeranjang() {
         existing.qty += qty;
     } else {
         cart.push({
-            produk_id:       currentProduk.id,
-            produk_satuan_id:parseInt(opt.value),
-            kode_produk:     currentProduk.kode_produk,
-            nama_produk:     currentProduk.nama_produk,
-            satuan_dasar:    currentProduk.satuan_dasar,
-            nama_satuan:     opt.dataset.nama,
-            isi_satuan:      parseInt(opt.dataset.isi),
+            produk_id:          currentProduk.id,
+            produk_satuan_id:   parseInt(opt.value),
+            kode_produk:        currentProduk.kode_produk,
+            nama_produk:        currentProduk.nama_produk,
+            satuan_dasar:       currentProduk.satuan_dasar,
+            nama_satuan:        opt.dataset.nama,
+            isi_satuan:         parseInt(opt.dataset.isi),
             qty,
-            harga_satuan:    harga,
-            stok_dalam_satuan: stok,
+            harga_satuan:       harga,
+            stok_dalam_satuan:  stok,
         });
     }
 
@@ -564,18 +477,17 @@ function resetKeranjang() {
     document.getElementById('customer-selected').classList.add('hidden');
     document.getElementById('input-bayar').value = '';
     document.getElementById('status-kafka').classList.add('hidden');
-    document.getElementById('btn-proses').textContent = 'Proses Transaksi';
+    document.getElementById('lbl-proses').textContent = 'Proses Transaksi';
     renderKeranjang();
 }
 
 function hitungKembalian() {
     const total  = cart.reduce((s, c) => s + c.qty * c.harga_satuan, 0);
     const bayar  = parseFloat(document.getElementById('input-bayar').value) || 0;
-    const kembal = Math.max(0, bayar - total);
-    document.getElementById('lbl-kembalian').textContent = 'Rp ' + fmt(kembal);
+    document.getElementById('lbl-kembalian').textContent = 'Rp ' + fmt(Math.max(0, bayar - total));
 }
 
-// ── CUSTOMER SEARCH ───────────────────────────────────────────────────────────
+// ── Customer Search ───────────────────────────────────────────────────────────
 let customerTimer = null;
 
 function searchCustomer(q) {
@@ -591,22 +503,20 @@ function searchCustomer(q) {
 
 function renderCustomerDrop(items) {
     const list = document.getElementById('customer-list');
-    if (!items.length) {
-        list.innerHTML = '<p class="px-3 py-2 text-xs text-gray-400 dark:text-gray-500">Tidak ada customer</p>';
-    } else {
-        list.innerHTML = items.map(c => `
+    list.innerHTML = !items.length
+        ? '<p class="px-3 py-2 text-xs text-gray-400 dark:text-gray-500">Tidak ada customer</p>'
+        : items.map(c => `
             <button class="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                 onclick="pilihCustomer(${c.id}, '${c.nama.replace(/'/g, "\\'")}', '${c.no_telp}')">
                 <span class="font-medium text-gray-900 dark:text-gray-100">${c.nama}</span>
                 <span class="text-xs text-gray-400 ml-2">${c.no_telp}</span>
             </button>`).join('');
-    }
     showCustomerDrop();
 }
 
 function pilihCustomer(id, nama, noTelp) {
     selectedCustomer = { id, nama };
-    document.getElementById('input-customer').value = nama + ' - ' + noTelp;
+    document.getElementById('input-customer').value    = nama + ' - ' + noTelp;
     document.getElementById('customer-nama').textContent = nama;
     document.getElementById('customer-selected').classList.remove('hidden');
     hideCustomerDrop();
@@ -621,7 +531,7 @@ function clearCustomer() {
 function showCustomerDrop() { document.getElementById('dropdown-customer').classList.remove('hidden'); }
 function hideCustomerDrop() { document.getElementById('dropdown-customer').classList.add('hidden'); }
 
-// ── PROSES TRANSAKSI ──────────────────────────────────────────────────────────
+// ── Proses Transaksi ──────────────────────────────────────────────────────────
 async function prosesTransaksi() {
     if (!cart.length) return;
 
@@ -630,7 +540,6 @@ async function prosesTransaksi() {
     const bayar    = parseFloat(document.getElementById('input-bayar').value) || total;
     const kembalian = Math.max(0, bayar - total);
 
-    // Validasi bayar untuk tunai
     if (metode === 'tunai' && bayar < total) {
         alert('Uang yang diterima kurang dari total transaksi');
         return;
@@ -640,7 +549,7 @@ async function prosesTransaksi() {
     document.getElementById('status-kafka').classList.add('hidden');
 
     const payload = {
-        items:       cart.map(c => ({
+        items: cart.map(c => ({
             produk_id:        c.produk_id,
             produk_satuan_id: c.produk_satuan_id,
             nama_satuan:      c.nama_satuan,
@@ -660,122 +569,72 @@ async function prosesTransaksi() {
 
     try {
         const { data } = await axios.post('/api/kasir/transaksi', payload);
-        // HTTP 202 — transaksi diterima, menunggu Kafka Consumer
+        // 202 Accepted — Kafka Consumer yang menyelesaikan proses
         pendingTrxId = data.id_transaksi;
         setLoading(false);
         document.getElementById('status-kafka').classList.remove('hidden');
         document.getElementById('btn-proses').disabled = true;
         document.getElementById('lbl-proses').textContent = 'Menunggu Konfirmasi...';
-
     } catch (err) {
         setLoading(false);
-        const msg = err.response?.data?.message || 'Gagal memproses transaksi';
-        tampilkanError(msg);
+        tampilkanError(err.response?.data?.message || 'Gagal memproses transaksi');
     }
 }
 
 function setLoading(loading) {
     const btn     = document.getElementById('btn-proses');
     const spinner = document.getElementById('spinner-proses');
-    const lbl     = document.getElementById('lbl-proses');
     btn.disabled  = loading || !cart.length;
     spinner.classList.toggle('hidden', !loading);
-    lbl.textContent = loading ? 'Memproses...' : 'Proses Transaksi';
+    document.getElementById('lbl-proses').textContent = loading ? 'Memproses...' : 'Proses Transaksi';
 }
 
-// ── WEBSOCKET EVENTS ──────────────────────────────────────────────────────────
-// WS sudah diinisialisasi di app.blade.php, tapi halaman ini standalone.
-// Setup WS sendiri karena tidak extend layouts.app.
+// ── WebSocket Event Listeners ─────────────────────────────────────────────────
+// Menggunakan DOM CustomEvent yang di-dispatch oleh layouts/kasir.blade.php
+// sehingga tidak ada duplikasi kode WS setup di sini.
 
-let wsConn = null;
-let wsTimer = null;
-
-function connectWS() {
-    if (wsConn && wsConn.readyState === WebSocket.OPEN) return;
-    setWsState('connecting');
-    wsConn = new WebSocket('ws://' + location.host + '/ws?channel=stok-global');
-
-    wsConn.addEventListener('open', function () {
-        setWsState('connected');
-        if (wsTimer) { clearTimeout(wsTimer); wsTimer = null; }
-        // Subscribe ke channel personal kasir untuk notifikasi transaksi
-        if (authUser?.id) {
-            wsConn.send(JSON.stringify({ action: 'subscribe', channel: 'user-' + authUser.id }));
-        }
-    });
-
-    wsConn.addEventListener('message', function (e) {
-        try {
-            const data = JSON.parse(e.data);
-            handleWsEvent(data);
-        } catch (_) {}
-    });
-
-    wsConn.addEventListener('close', function () {
-        setWsState('disconnected');
-        wsTimer = setTimeout(connectWS, 3000);
-    });
-    wsConn.addEventListener('error', function () { setWsState('disconnected'); });
-}
-
-function setWsState(state) {
-    const ping  = document.getElementById('ws-ping');
-    const dot   = document.getElementById('ws-dot');
-    const label = document.getElementById('ws-label');
-    const cfg   = { connected:{c:'green',t:'Real-time aktif'}, disconnected:{c:'red',t:'Terputus'}, connecting:{c:'gray',t:'Menghubungkan...'} }[state] || {c:'gray',t:''};
-    ping.className  = `animate-ping absolute inline-flex h-full w-full rounded-full bg-${cfg.c}-400 opacity-75`;
-    dot.className   = `relative inline-flex rounded-full h-2 w-2 bg-${cfg.c}-500`;
-    if (label) label.textContent = cfg.t;
-}
-
-function handleWsEvent(data) {
-    switch (data.event) {
-        case 'transaction.completed':
-            // Hanya proses jika ini transaksi kita yang pending
-            if (data.transaksiId === pendingTrxId || pendingTrxId) {
-                document.getElementById('status-kafka').classList.add('hidden');
-                tampilkanSukses(data.transaksiId || pendingTrxId);
-            }
-            break;
-
-        case 'transaction.failed':
-            if (data.transaksiId === pendingTrxId || pendingTrxId) {
-                document.getElementById('status-kafka').classList.add('hidden');
-                document.getElementById('btn-proses').disabled = false;
-                document.getElementById('lbl-proses').textContent = 'Proses Transaksi';
-                pendingTrxId = null;
-                tampilkanError(data.message || 'Stok tidak mencukupi');
-            }
-            break;
-
-        case 'stock.updated':
-            // Update stok_dalam_satuan di keranjang (referensi informasi)
-            if (data.updates && data.updates.length) {
-                data.updates.forEach(u => {
-                    cart.forEach(item => {
-                        if (item.produk_id === u.produkId) {
-                            item.stok_dalam_satuan = Math.floor(u.stokBaru / item.isi_satuan);
-                        }
-                    });
-                });
-            }
-            break;
+document.addEventListener('ws:transaction-completed', function (e) {
+    const data = e.detail;
+    if (data.transaksiId === pendingTrxId || pendingTrxId) {
+        document.getElementById('status-kafka').classList.add('hidden');
+        tampilkanSukses(data.transaksiId || pendingTrxId);
     }
-}
+});
 
-// ── STRUK ─────────────────────────────────────────────────────────────────────
+document.addEventListener('ws:transaction-failed', function (e) {
+    const data = e.detail;
+    if (data.transaksiId === pendingTrxId || pendingTrxId) {
+        document.getElementById('status-kafka').classList.add('hidden');
+        document.getElementById('btn-proses').disabled = false;
+        document.getElementById('lbl-proses').textContent = 'Proses Transaksi';
+        pendingTrxId = null;
+        tampilkanError(data.message || 'Stok tidak mencukupi');
+    }
+});
+
+document.addEventListener('stok-updated', function (e) {
+    const updates = e.detail || [];
+    updates.forEach(u => {
+        cart.forEach(item => {
+            if (item.produk_id === u.produkId) {
+                item.stok_dalam_satuan = Math.floor(u.stokBaru / item.isi_satuan);
+            }
+        });
+    });
+});
+
+// ── Struk ─────────────────────────────────────────────────────────────────────
 async function tampilkanSukses(trxId) {
     pendingTrxId = null;
     document.getElementById('modal-no-trx').textContent = 'No. Transaksi: #' + trxId;
     document.getElementById('modal-struk').classList.remove('hidden');
 
-    // Fetch HTML struk
     try {
         const { data } = await axios.get(`/api/kasir/transaksi/${trxId}/struk`);
         strutHtml = data.data.html;
         document.getElementById('modal-struk-konten').innerHTML =
             '<p class="text-green-600 dark:text-green-400 font-medium">Struk siap dicetak.</p>';
-    } catch (err) {
+    } catch (_) {
         strutHtml = '';
         document.getElementById('modal-struk-konten').textContent = 'Gagal memuat struk.';
     }
@@ -783,7 +642,6 @@ async function tampilkanSukses(trxId) {
 
 function cetakStruk() {
     if (!strutHtml) return;
-    // Tulis HTML struk ke iframe tersembunyi, lalu trigger print
     const iframe = document.getElementById('iframe-struk');
     iframe.srcdoc = strutHtml;
     iframe.onload = function () {
@@ -792,47 +650,39 @@ function cetakStruk() {
     };
 }
 
-function tutupModal() {
-    document.getElementById('modal-struk').classList.add('hidden');
+function tutupModal()       { document.getElementById('modal-struk').classList.add('hidden'); }
+function tutupModalError()  { document.getElementById('modal-error').classList.add('hidden'); }
+function tampilkanError(msg) {
+    document.getElementById('modal-error-msg').textContent = msg;
+    document.getElementById('modal-error').classList.remove('hidden');
 }
-
 function transaksiBerikutnya() {
     tutupModal();
     resetKeranjang();
     document.getElementById('input-kode').focus();
 }
 
-function tampilkanError(msg) {
-    document.getElementById('modal-error-msg').textContent = msg;
-    document.getElementById('modal-error').classList.remove('hidden');
-}
-
-function tutupModalError() {
-    document.getElementById('modal-error').classList.add('hidden');
-}
-
-// ── UTILITAS ──────────────────────────────────────────────────────────────────
+// ── Utilitas ──────────────────────────────────────────────────────────────────
 function fmt(n) { return new Intl.NumberFormat('id-ID').format(n); }
+
 function setErrScan(msg) {
     const el = document.getElementById('err-scan');
     el.textContent = msg;
     msg ? el.classList.remove('hidden') : el.classList.add('hidden');
 }
 
-// ── INIT ──────────────────────────────────────────────────────────────────────
+// ── Init ──────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', function () {
-    connectWS();
     renderKeranjang();
     document.getElementById('input-kode').focus();
 
-    // Sembunyikan panel bayar jika non-tunai (transfer/qris tidak perlu input bayar)
+    // Sembunyikan panel uang diterima untuk metode non-tunai
     document.querySelectorAll('input[name="metode_bayar"]').forEach(function (r) {
         r.addEventListener('change', function () {
-            const panel = document.getElementById('panel-bayar');
-            panel.style.display = this.value === 'tunai' ? 'block' : 'none';
+            document.getElementById('panel-bayar').style.display =
+                this.value === 'tunai' ? 'block' : 'none';
         });
     });
 });
 </script>
-</body>
-</html>
+@endpush

@@ -314,6 +314,7 @@ function handleWsEvent(data) {
         case 'return.sale.completed':
             showToast('success', 'Retur Diterima',
                 'Refund: Rp ' + formatRupiah(data.nilaiRefund || 0));
+            document.dispatchEvent(new CustomEvent('ws:return-sale-completed', { detail: data }));
             break;
         case 'return.purchase.completed':
             showToast('success', 'Retur Pembelian Selesai',

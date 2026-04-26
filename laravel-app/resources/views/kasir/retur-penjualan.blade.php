@@ -145,7 +145,7 @@
         </div>
 
         {{-- Status Kafka setelah 202 --}}
-        <div id="status-kafka" class="hidden bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl px-5 py-4 flex items-center gap-3">
+        <div id="status-kafka" class="hidden bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl px-5 py-4 items-center gap-3">
             <svg class="animate-spin w-5 h-5 text-amber-500 shrink-0" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
@@ -161,7 +161,7 @@
 </div>{{-- /max-w --}}
 
 {{-- ══ MODAL SUKSES ════════════════════════════════════════════════════════════ --}}
-<div id="modal-sukses" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+<div id="modal-sukses" class="hidden fixed inset-0 z-50 items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
     <div class="w-full max-w-sm bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden">
         <div class="px-6 py-5 text-center">
             {{-- Ikon sukses --}}
@@ -426,7 +426,9 @@ async function prosesRetur() {
 
         // 202 Accepted — Kafka Consumer yang akan proses
         pendingReturId = data.id_retur;
-        document.getElementById('status-kafka').classList.remove('hidden');
+        const kafka = document.getElementById('status-kafka');
+        kafka.classList.remove('hidden');
+        kafka.classList.add('flex');
         document.getElementById('btn-proses').disabled = true;
 
     } catch (err) {
@@ -440,35 +442,20 @@ async function prosesRetur() {
 }
 
 // ── WebSocket ─────────────────────────────────────────────────────────────────
-// app.blade.php sudah setup WebSocket dan set data ke event 'stok-updated'.
-// Untuk event transaksi personal (return.sale.completed), kita perlu listen
-// dari WS yang sudah terkoneksi di app.blade.php melalui window event.
-// Tapi halaman ini extends layouts.app sehingga WS sudah aktif.
-// Kita intercept dengan override handleWsEvent (tersedia karena app.blade.php menyediakan wsConn global).
+// layouts/app.blade.php menangani koneksi WS dan men-dispatch DOM CustomEvent
+// 'ws:return-sale-completed' setiap kali Consumer menyelesaikan proses retur.
+// Halaman ini cukup listen event DOM — tidak perlu akses wsConn langsung.
 
-// Tunggu WS dari app.blade.php sudah tersambung, lalu override event handler
-document.addEventListener('DOMContentLoaded', function () {
-    // Cek setiap 500ms sampai wsConn tersedia dari layouts.app
-    const timer = setInterval(function () {
-        if (typeof wsConn !== 'undefined' && wsConn) {
-            clearInterval(timer);
-            wsConn.addEventListener('message', function (e) {
-                try {
-                    const data = JSON.parse(e.data);
-                    if (data.event === 'return.sale.completed') {
-                        handleReturnCompleted(data);
-                    }
-                    // stock.updated tidak perlu diproses di halaman retur
-                } catch (_) {}
-            });
-        }
-    }, 500);
+document.addEventListener('ws:return-sale-completed', function (e) {
+    handleReturnCompleted(e.detail);
 });
 
 function handleReturnCompleted(data) {
     if (!pendingReturId) return;
 
-    document.getElementById('status-kafka').classList.add('hidden');
+    const kafkaEl = document.getElementById('status-kafka');
+    kafkaEl.classList.add('hidden');
+    kafkaEl.classList.remove('flex');
     pendingReturId = null;
 
     // Tampilkan modal sukses dengan nilai refund dari Consumer
@@ -476,7 +463,9 @@ function handleReturnCompleted(data) {
         'No. Retur: ' + (data.returId || '—');
     document.getElementById('modal-refund').textContent =
         'Rp ' + fmt(data.nilaiRefund || 0);
-    document.getElementById('modal-sukses').classList.remove('hidden');
+    const modalEl = document.getElementById('modal-sukses');
+    modalEl.classList.remove('hidden');
+    modalEl.classList.add('flex');
 }
 
 // ── Utilitas ──────────────────────────────────────────────────────────────────
@@ -513,7 +502,9 @@ function resetForm() {
     trxData      = null;
     pendingReturId = null;
     document.getElementById('section-transaksi').classList.add('hidden');
-    document.getElementById('status-kafka').classList.add('hidden');
+    const kafkaEl2 = document.getElementById('status-kafka');
+    kafkaEl2.classList.add('hidden');
+    kafkaEl2.classList.remove('flex');
     document.getElementById('input-no-trx').value = '';
     document.getElementById('input-alasan').value = '';
     setErrCari('');
@@ -521,7 +512,9 @@ function resetForm() {
 }
 
 function returBaru() {
-    document.getElementById('modal-sukses').classList.add('hidden');
+    const modalEl2 = document.getElementById('modal-sukses');
+    modalEl2.classList.add('hidden');
+    modalEl2.classList.remove('flex');
     resetForm();
 }
 </script>
