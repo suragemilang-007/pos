@@ -5,11 +5,25 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', fn () => redirect('/login'));
 Route::get('/login', fn () => view('auth.login'))->name('login');
 
-// Dashboard per role — auth ditangani client-side via JWT + Axios interceptor
+// ─── Dashboard per role ────────────────────────────────────────────────────────
+// Auth ditangani client-side via JWT + Axios interceptor (bukan Laravel session).
 Route::get('/kasir',   fn () => view('kasir.dashboard'))->name('kasir.dashboard');
 Route::get('/produk',  fn () => view('gudang.dashboard'))->name('gudang.dashboard');
 Route::get('/laporan', fn () => view('owner.dashboard'))->name('owner.dashboard');
 
+// ─── Kasir ────────────────────────────────────────────────────────────────────
 Route::get('/kasir/transaksi',       fn () => view('kasir.transaksi'))->name('kasir.transaksi');
 Route::get('/kasir/retur-penjualan', fn () => view('kasir.retur-penjualan'))->name('kasir.retur');
-Route::get('/dashboard', fn () => view('dashboard'))->name('dashboard');
+Route::get('/customer',              fn () => view('kasir.customer'))->name('kasir.customer');
+Route::get('/stok',                  fn () => view('kasir.stok'))->name('kasir.stok');
+
+// ─── Gudang ───────────────────────────────────────────────────────────────────
+Route::get('/gudang/produk',          fn () => view('gudang.produk'))->name('gudang.produk');
+Route::get('/gudang/pembelian',       fn () => view('gudang.pembelian'))->name('gudang.pembelian');
+Route::get('/gudang/pembelian/create',fn () => view('gudang.pembelian-create'))->name('gudang.pembelian.create');
+Route::get('/gudang/retur-pembelian', fn () => view('gudang.retur-pembelian'))->name('gudang.retur-pembelian');
+Route::get('/gudang/supplier',        fn () => view('gudang.supplier'))->name('gudang.supplier');
+
+// ─── Owner ────────────────────────────────────────────────────────────────────
+Route::get('/user',       fn () => view('owner.user'))->name('owner.user');
+Route::get('/dashboard',  fn () => view('dashboard'))->name('dashboard');

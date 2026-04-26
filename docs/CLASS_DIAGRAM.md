@@ -1,7 +1,9 @@
 # CLASS_DIAGRAM.md — Referensi Method & Class
+
 > **Versi 2.0** — Update: ProdukSatuan + multi-unit pricing
 
 ## Panduan Penggunaan
+
 Setiap method di sini HARUS diimplementasikan dengan nama yang persis sama.
 Jangan rename method tanpa update file ini terlebih dahulu.
 Tipe parameter menggunakan konvensi PHP: `string`, `int`, `float`, `bool`, `array`, `?int` (nullable).
@@ -11,6 +13,7 @@ Tipe parameter menggunakan konvensi PHP: `string`, `int`, `float`, `bool`, `arra
 ## DOMAIN: AUTH
 
 ### UserService — `app/Services/Auth/UserService.php`
+
 ```
 login(username: string, password: string): array
   Return: {token, role: {id, nama}, user: {id, nama, username}}
@@ -28,6 +31,7 @@ updateStatus(userId: int, status: string): bool
 ```
 
 ### SessionService — `app/Services/Auth/SessionService.php`
+
 ```
 create(userId: int): string
   INSERT ke sessions, return JWT token
@@ -48,6 +52,7 @@ revokeAllByUser(userId: int): bool
 ## DOMAIN: TRANSACTION
 
 ### TransaksiService — `app/Services/Transaction/TransaksiService.php`
+
 ```
 create(items: array, customerId: ?int, userId: int): Transaksi
   items item: {produk_id, produk_satuan_id, nama_satuan, isi_satuan, qty, harga_satuan, diskon_item}
@@ -69,6 +74,7 @@ canReturn(id: int): bool
 ```
 
 ### ReturPenjualanService — `app/Services/Transaction/ReturPenjualanService.php`
+
 ```
 create(transaksiId: int, itemsRetur: array, alasan: string, userId: int): ReturPenjualan
   itemsRetur item: {produk_id, nama_satuan, isi_satuan, qty_retur, harga_satuan}
@@ -83,6 +89,7 @@ calculateRefund(itemsRetur: array): float
 ```
 
 ### CustomerService — `app/Services/Inventory/CustomerService.php`
+
 ```
 getRiwayatBelanja(customerId: int, page: int, limit: int): array
   Include: total_belanja (SUM), frekuensi (COUNT)
@@ -110,6 +117,7 @@ hasTransaksi(customerId: int): bool
 ## DOMAIN: INVENTORY
 
 ### ProdukService — `app/Services/Inventory/ProdukService.php`
+
 ```
 create(data: array): Produk
   data wajib: kode_produk, nama_produk, kategori_id, satuan_dasar, harga_beli_dasar
@@ -144,6 +152,7 @@ getStokDalamSatuan(produkId: int): array
 ```
 
 ### ProdukSatuanService — `app/Services/Inventory/ProdukSatuanService.php`
+
 ```
 getSatuanList(produkId: int): Collection
   Return semua satuan produk, urut: is_default DESC, isi ASC
@@ -175,6 +184,7 @@ getHematPersen(produkId: int, satuanId: int): float
 ```
 
 ### SupplierService — `app/Services/Inventory/SupplierService.php`
+
 ```
 create(data: array): Supplier
 update(id: int, data: array): bool
@@ -190,6 +200,7 @@ getRiwayatPembelian(supplierId: int): Collection
 ## DOMAIN: PURCHASING
 
 ### PembelianService — `app/Services/Purchasing/PembelianService.php`
+
 ```
 create(supplierId: int, items: array, tanggal: string, userId: int): Pembelian
   items item: {produk_id, produk_satuan_id, nama_satuan, isi_satuan, qty, harga_beli_satuan}
@@ -205,6 +216,7 @@ canReturn(id: int): bool
 ```
 
 ### ReturPembelianService — `app/Services/Purchasing/ReturPembelianService.php`
+
 ```
 create(pembelianId: int, itemsRetur: array, alasan: string, userId: int): ReturPembelian
   Snapshot nama_satuan dan isi_satuan dari detail_pembelian asal
@@ -222,6 +234,7 @@ calculateKredit(itemsRetur: array): float
 ## DOMAIN: EVENT-DRIVEN (KAFKA)
 
 ### KafkaProducerService — `app/Services/Kafka/KafkaProducerService.php`
+
 ```
 publishTransactionCreated(transaksi: Transaksi): bool
   Payload items WAJIB sertakan: {produkId, produkSatuanId, qty, isiSatuan, hargaSatuan, diskonItem}
@@ -237,6 +250,7 @@ publishPurchaseReturnRequested(retur: ReturPembelian): bool
 ```
 
 ### transactionConsumer.js — `kafka-service/consumers/transactionConsumer.js`
+
 ```javascript
 startTransactionConsumer(): void
 processTransaction(event: object): void
@@ -247,6 +261,7 @@ markTransaksiFailed(transaksiId, userId, message): void
 ```
 
 ### purchaseConsumer.js — `kafka-service/consumers/purchaseConsumer.js`
+
 ```javascript
 startPurchaseConsumer(): void
 processPurchase(event: object): void
@@ -256,6 +271,7 @@ processPurchase(event: object): void
 ```
 
 ### returnConsumer.js — `kafka-service/consumers/returnConsumer.js`
+
 ```javascript
 startReturnConsumer(): void
 processSaleReturn(event): void
@@ -265,6 +281,7 @@ processPurchaseReturn(event): void
 ```
 
 ### wsService.js — `kafka-service/services/wsService.js`
+
 ```javascript
 push(channel: string, data: object): void
   Kirim ke semua subscriber channel tertentu
@@ -281,6 +298,7 @@ setChannels(channelsMap: Map): void
 ## DOMAIN: REPORTING
 
 ### LaporanService — `app/Services/Reporting/LaporanService.php`
+
 ```
 generateLaporanPenjualan(dari: string, sampai: string): array
   Query: transaksi JOIN detail_transaksi JOIN produk
@@ -306,6 +324,7 @@ exportExcel(laporan: array): BinaryFileResponse
 ## MODEL ELOQUENT
 
 ### Model: `ProdukSatuan` — `app/Models/ProdukSatuan.php`
+
 ```php
 $fillable = [
   'produk_id', 'nama_satuan', 'isi',
@@ -332,6 +351,7 @@ getStokDalamSatuanAttribute(): int
 ```
 
 ### Model: `Produk` — `app/Models/Produk.php`
+
 ```php
 // PERUBAHAN dari v1:
 // - Hapus: harga_jual dari fillable
@@ -346,4 +366,26 @@ $fillable = [
 // Relasi BARU
 satuanList(): HasMany    -> ProdukSatuan (urut: is_default DESC, isi ASC)
 satuanDefault(): HasOne  -> ProdukSatuan WHERE is_default=1
+```
+
+### KategoriProdukService — `app/Services/Inventory/KategoriProdukService.php`
+
+```
+getAll(): Collection
+  Return semua kategori aktif, urut nama_kategori ASC
+  Digunakan untuk dropdown di form produk
+
+create(data: array): KategoriProduk
+  data: {nama_kategori, deskripsi?}
+  Validasi: nama_kategori harus UNIQUE
+
+update(id: int, data: array): bool
+
+delete(id: int): bool
+  Cek COUNT(*) di produk WHERE kategori_id=? dulu
+  Jika masih ada produk (aktif maupun nonaktif): tolak, return false
+  Jika tidak ada: DELETE
+
+hasProduk(id: int): bool
+  Cek apakah kategori masih digunakan oleh produk manapun
 ```

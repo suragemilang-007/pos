@@ -1,16 +1,19 @@
 # SEQUENCE_FLOWS.md — Kontrak API & Urutan Pesan
+
 > **Versi 2.0** — Update: Multi-unit pricing di transaksi dan pembelian
 
 ## Konvensi Response
-- `sync`   → HTTP request-response (pengirim tunggu)
-- `async`  → Kafka/WebSocket (pengirim tidak tunggu)
-- `202`    → Diterima, diproses Kafka (async)
-- `200`    → Selesai sinkron
-- `201`    → Data berhasil dibuat
+
+- `sync` → HTTP request-response (pengirim tunggu)
+- `async` → Kafka/WebSocket (pengirim tidak tunggu)
+- `202` → Diterima, diproses Kafka (async)
+- `200` → Selesai sinkron
+- `201` → Data berhasil dibuat
 
 ---
 
 ## SD-01: Login
+
 ```
 POST /api/auth/login
 Body: { username: string, password: string }
@@ -27,6 +30,7 @@ Response 401: { message: "Username atau password salah" }
 ```
 
 ## SD-02: Logout
+
 ```
 POST /api/auth/logout
 Header: Authorization: Bearer {token}
@@ -38,6 +42,7 @@ Response 401: { message: "Token tidak valid" }
 ---
 
 ## SD-03: Input Transaksi Penjualan
+
 ```
 [per item — loop saat kasir scan/input]
 GET /api/kasir/produk/{kode}/stok
@@ -99,6 +104,7 @@ WS PUSH stok (setelah completed): {
 > Frontend menghitung stok per satuan: `floor(stokBaru / isi_satuan)`
 
 ## SD-04: Cetak Struk
+
 ```
 GET /api/kasir/transaksi/{id}/struk
 Header: Authorization: Bearer {token}
@@ -127,6 +133,7 @@ Response 404: { message: "Transaksi tidak ditemukan" }
 ```
 
 ## SD-05: Retur Penjualan
+
 ```
 [verifikasi transaksi asal]
 GET /api/kasir/transaksi/{id}
@@ -175,6 +182,7 @@ WS PUSH: { event: "stock.updated", updates: [...] }
 ```
 
 ## SD-06: Lihat Stok Real-Time
+
 ```
 [initial load]
 GET /api/kasir/stok?kategori_id=&nama=&page=1&limit=20
@@ -211,6 +219,7 @@ Frontend hitung stok per satuan: floor(stokBaru / isi)
 ```
 
 ## SD-07: Cek Stok (saat Input Transaksi)
+
 ```
 GET /api/kasir/produk/{kode}/stok
 
@@ -245,6 +254,7 @@ Frontend menentukan warning berdasarkan stok_dalam_satuan satuan default:
 ```
 
 ## SD-08: CRUD Produk
+
 ```
 GET  /api/gudang/produk?page=&limit=&kategori_id=&nama=&status=
 
@@ -296,6 +306,7 @@ DELETE /api/gudang/produk/{id}/satuan/{satuan_id}
 ```
 
 ## SD-09: Pembelian / Restock
+
 ```
 POST /api/gudang/pembelian
 Body: {
@@ -328,6 +339,7 @@ WS PUSH: { event: "stock.updated", updates: [...] }
 ```
 
 ## SD-10: Retur Pembelian
+
 ```
 [verifikasi PO asal]
 GET /api/gudang/pembelian/{id}
@@ -374,6 +386,7 @@ WS PUSH: {
 ```
 
 ## SD-11: CRUD Customer
+
 ```
 GET  /api/kasir/customer?page=&search=&status=
 POST /api/kasir/customer
@@ -386,6 +399,7 @@ Response 422 (duplikat): { errors: { no_telp: ["Nomor telepon sudah terdaftar"] 
 ```
 
 ## SD-12: Riwayat Belanja Customer
+
 ```
 GET /api/kasir/customer?search={keyword}
 GET /api/kasir/customer/{id}/riwayat?page=1&limit=20
@@ -408,6 +422,7 @@ GET /api/kasir/transaksi/{id}   <- detail + items dengan nama_satuan
 ```
 
 ## SD-13: CRUD Supplier
+
 ```
 GET  /api/gudang/supplier?page=&search=
 POST /api/gudang/supplier
@@ -418,6 +433,7 @@ DEL  /api/gudang/supplier/{id}
 ```
 
 ## SD-14: Laporan
+
 ```
 GET /api/owner/laporan/{jenis}?dari=YYYY-MM-DD&sampai=YYYY-MM-DD&kategori_id=
 jenis: penjualan | stok | pembelian
@@ -437,6 +453,7 @@ Response 200: file binary
 ```
 
 ## SD-15: Manajemen User
+
 ```
 GET  /api/owner/user
 POST /api/owner/user
@@ -530,3 +547,31 @@ Response 422 (duplikat): { errors: { username: ["Username sudah digunakan"] } }
 
 > **ATURAN CRITICAL di Consumer:** Selalu gunakan `isiSatuan` untuk konversi:
 > `qty_stok_berubah = qty (atau qtyRetur) x isiSatuan`
+
+## SD-16: Manajemen Kategori Produk
+
+```
+GET  /api/gudang/kategori
+Response 200: {
+  data: [{ id, nama_kategori, deskripsi, jumlah_produk }]
+}
+jumlah_produk: COUNT produk yang menggunakan kategori ini
+
+POST /api/gudang/kategori
+Body: { nama_kategori: string, deskripsi?: string }
+Response 201: { data: { id, nama_kategori, deskripsi } }
+Response 422: { errors: { nama_kategori: ["Nama kategori sudah ada"] } }
+
+PUT /api/gudang/kategori/{id}
+Body: { nama_kategori?: string, deskripsi?: string }
+Response 200: { data: kategori }
+
+DELETE /api/gudang/kategori/{id}
+Response 200: { message: "Kategori berhasil dihapus" }
+Response 422: { message: "Kategori tidak dapat dihapus karena masih digunakan oleh X produk" }
+
+[Publik untuk dropdown — bisa diakses kasir dan gudang]
+GET /api/kategori
+Response 200: { data: [{ id, nama_kategori }] }
+Digunakan oleh: form produk, filter stok, filter laporan
+```
