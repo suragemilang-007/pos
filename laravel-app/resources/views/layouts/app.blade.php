@@ -227,6 +227,7 @@ function handleWsEvent(data) {
             break;
         case 'purchase.completed':
             showToast('success', 'Restock Berhasil', 'Stok produk telah diperbarui.');
+            document.dispatchEvent(new CustomEvent('ws:purchase-completed', { detail: data }));
             break;
         case 'return.sale.completed':
             showToast('success', 'Retur Diterima',
@@ -236,6 +237,7 @@ function handleWsEvent(data) {
         case 'return.purchase.completed':
             showToast('success', 'Retur Pembelian Selesai',
                 'Kredit: Rp ' + formatRupiah(data.nilaiKredit || 0));
+            document.dispatchEvent(new CustomEvent('ws:return-purchase-completed', { detail: data }));
             break;
         case 'stock.updated':
             // Emit custom event agar halaman stok update UI tanpa reload penuh

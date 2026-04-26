@@ -23,7 +23,14 @@ class CustomerController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $query = Customer::query();
+        // withSum + withCount menggunakan subquery — tidak N+1
+        $query = Customer::withSum(
+                ['transaksi as total_belanja' => fn ($q) => $q->where('status', 'COMPLETED')],
+                'total'
+            )
+            ->withCount(
+                ['transaksi as frekuensi' => fn ($q) => $q->where('status', 'COMPLETED')]
+            );
 
         if ($request->filled('search')) {
             $keyword = $request->string('search');
