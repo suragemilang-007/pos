@@ -18,8 +18,9 @@ class StoreUserRequest extends FormRequest
         return [
             'nama'     => ['required', 'string', 'max:100'],
             'username' => ['required', 'string', 'max:50', 'unique:users,username'],
-            'password' => ['required', 'string', 'min:6'],
-            'role_id'  => ['required', 'integer', 'exists:roles,id'],
+            'password' => ['required', 'string', 'min:8'],
+            // View mengirim slug role (kasir/admin_gudang/owner), bukan role_id integer
+            'role'     => ['required', 'string', 'in:kasir,admin_gudang,owner'],
         ];
     }
 
@@ -27,8 +28,8 @@ class StoreUserRequest extends FormRequest
     {
         return [
             'username.unique' => 'Username sudah digunakan',
-            'password.min'    => 'Password minimal 6 karakter',
-            'role_id.exists'  => 'Role tidak ditemukan',
+            'password.min'    => 'Password minimal 8 karakter',
+            'role.in'         => 'Role tidak valid. Pilih: kasir, admin_gudang, atau owner',
         ];
     }
 

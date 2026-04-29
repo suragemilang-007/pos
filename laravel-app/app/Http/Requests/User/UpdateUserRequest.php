@@ -24,7 +24,8 @@ class UpdateUserRequest extends FormRequest
                 'sometimes', 'string', 'max:50',
                 Rule::unique('users', 'username')->ignore($userId),
             ],
-            'role_id' => ['sometimes', 'integer', 'exists:roles,id'],
+            // View mengirim slug role (kasir/admin_gudang/owner), bukan role_id integer
+            'role'    => ['sometimes', 'string', 'in:kasir,admin_gudang,owner'],
             'status'  => ['sometimes', 'in:aktif,nonaktif'],
             // password tidak diterima di sini — ada endpoint /reset-password khusus
         ];
@@ -34,7 +35,7 @@ class UpdateUserRequest extends FormRequest
     {
         return [
             'username.unique' => 'Username sudah digunakan oleh user lain',
-            'role_id.exists'  => 'Role tidak ditemukan',
+            'role.in'         => 'Role tidak valid. Pilih: kasir, admin_gudang, atau owner',
             'status.in'       => 'Status harus: aktif atau nonaktif',
         ];
     }

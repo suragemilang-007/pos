@@ -126,7 +126,8 @@ Route::middleware(['auth.jwt', 'role:owner'])->prefix('owner')->group(function (
     Route::get('/laporan/{jenis}',        [LaporanController::class, 'generate']);
 
     // SD-15: Manajemen User
-    // PATCH routes khusus harus didefinisikan SEBELUM apiResource agar tidak bentrok
+    // Route statis harus SEBELUM apiResource / route dengan parameter agar tidak bentrok
+    Route::get  ('/user/cek-username',          [UserController::class, 'cekUsername']);
     Route::patch('/user/{user}/nonaktifkan',    [UserController::class, 'nonaktifkan']);
     Route::patch('/user/{user}/reset-password', [UserController::class, 'resetPassword']);
     Route::apiResource('/user', UserController::class)->except(['destroy']);

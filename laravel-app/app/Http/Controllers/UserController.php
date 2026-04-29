@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\User\StoreUserRequest;
 use App\Http\Requests\User\UpdateUserRequest;
+use App\Models\Role;
 use App\Models\User;
 use App\Services\Auth\UserService;
 use Illuminate\Http\JsonResponse;
@@ -17,6 +18,7 @@ class UserController extends Controller
 
     /**
      * GET /api/owner/user — SD-15
+     * Filter: ?role=kasir|admin_gudang|owner  &status=aktif|nonaktif
      */
     public function index(Request $request): JsonResponse
     {
@@ -34,16 +36,22 @@ class UserController extends Controller
             $query->where('status', $request->input('status'));
         }
 
-        $users = $query->orderBy('nama')->paginate(20);
+        // Filter berdasarkan slug role (kasir/admin_gudang/owner)
+        if ($request->filled('role')) {
+            $query->whereHas('role', fn ($q) => $q->where('nama_role', $request->input('role')));
+        }
 
-        // Seleksi field — password_hash TIDAK boleh dikembalikan dalam response apapun
+        $users = $query->orderBy('nama')->paginate((int) $request->input('limit', 20));
+
+        // Seleksi field — password_hash TIDAK boleh dikembalikan dalam response apapun (aturan 2.6)
+        // Field names disesuaikan dengan konvensi view: login_terakhir, role sebagai string slug
         $data = $users->getCollection()->map(fn ($u) => [
-            'id'         => $u->id,
-            'nama'       => $u->nama,
-            'username'   => $u->username,
-            'status'     => $u->status,
-            'last_login' => $u->last_login,
-            'role'       => $u->role ? ['id' => $u->role->id, 'nama_role' => $u->role->nama_role] : null,
+            'id'             => $u->id,
+            'nama'           => $u->nama,
+            'username'       => $u->username,
+            'status'         => $u->status,
+            'login_terakhir' => $u->last_login?->toIso8601String(),
+            'role'           => $u->role?->nama_role,
         ]);
 
         return response()->json([
@@ -58,12 +66,40 @@ class UserController extends Controller
     }
 
     /**
+     * GET /api/owner/user/cek-username?username=xxx — validasi unik realtime dari view
+     * Response: { tersedia: true|false }
+     */
+    public function cekUsername(Request $request): JsonResponse
+    {
+        $username = $request->input('username', '');
+
+        if (! $username) {
+            return response()->json(['tersedia' => false]);
+        }
+
+        $tersedia = ! User::where('username', $username)->exists();
+
+        return response()->json(['tersedia' => $tersedia]);
+    }
+
+    /**
      * POST /api/owner/user — SD-15
-     * Owner buat user baru. Password di-hash di UserService::create().
+     * View mengirim 'role' sebagai slug string → di-resolve ke role_id sebelum ke Service.
+     * Password di-hash di UserService::create().
      */
     public function store(StoreUserRequest $request): JsonResponse
     {
-        $user = $this->userService->create($request->validated());
+        $validated = $request->validated();
+
+        // Resolve slug role → role_id (kasir/admin_gudang/owner → ID di tabel roles)
+        $role = Role::where('nama_role', $validated['role'])->first();
+        if (! $role) {
+            return response()->json(['message' => 'Role tidak ditemukan di database'], 422);
+        }
+        $validated['role_id'] = $role->id;
+        unset($validated['role']);
+
+        $user = $this->userService->create($validated);
 
         return response()->json([
             'data' => [
@@ -71,7 +107,7 @@ class UserController extends Controller
                 'nama'     => $user->nama,
                 'username' => $user->username,
                 'status'   => $user->status,
-                'role'     => $user->role ? ['id' => $user->role->id, 'nama_role' => $user->role->nama_role] : null,
+                'role'     => $user->role?->nama_role,
                 // password_hash TIDAK dikembalikan — aturan 2.6 CLAUDE.md
             ],
             'message' => 'User berhasil dibuat',
@@ -80,7 +116,8 @@ class UserController extends Controller
 
     /**
      * PUT /api/owner/user/{id} — SD-15
-     * Update nama, username, role. Tidak menerima password (ada endpoint khusus).
+     * Update nama, username, role. Tidak menerima password (ada endpoint /reset-password khusus).
+     * View mengirim 'role' sebagai slug → di-resolve ke role_id.
      */
     public function update(UpdateUserRequest $request, int $user): JsonResponse
     {
@@ -90,7 +127,19 @@ class UserController extends Controller
             return response()->json(['message' => 'User tidak ditemukan'], 404);
         }
 
-        $this->userService->update($user, $request->validated());
+        $validated = $request->validated();
+
+        // Resolve slug role → role_id jika dikirim
+        if (isset($validated['role'])) {
+            $role = Role::where('nama_role', $validated['role'])->first();
+            if (! $role) {
+                return response()->json(['message' => 'Role tidak ditemukan di database'], 422);
+            }
+            $validated['role_id'] = $role->id;
+            unset($validated['role']);
+        }
+
+        $this->userService->update($user, $validated);
 
         return response()->json([
             'message' => 'User berhasil diperbarui',

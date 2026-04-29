@@ -30,5 +30,5 @@ Route::get('/gudang/pembelian/{id}', fn($id) => view('gudang.pembelian.show', ['
 Route::get('/gudang/supplier', fn() => view('gudang.supplier'))->name('gudang.supplier');
 
 // ─── Owner ────────────────────────────────────────────────────────────────────
-Route::get('/user', fn() => view('owner.user'))->name('owner.user');
+Route::get('/user', fn() => view('owner.user.index'))->name('owner.user');
 Route::get('/dashboard', fn() => view('owner.dashboard'))->name('owner.dashboard');
