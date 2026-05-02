@@ -89,4 +89,17 @@ class Produk extends Model
     {
         return $this->hasMany(DetailPembelian::class, 'produk_id');
     }
+
+    // Semua promo produk ini (aktif maupun tidak) — untuk halaman kelola promo
+    public function promo(): HasMany
+    {
+        return $this->hasMany(ProdukPromo::class, 'produk_id');
+    }
+
+    // Promo yang sedang berlaku hari ini — dipakai endpoint cekStok untuk kasir
+    // Scope aktif: is_active=1 AND periode berlaku mencakup hari ini
+    public function promoAktif(): HasMany
+    {
+        return $this->hasMany(ProdukPromo::class, 'produk_id')->aktif();
+    }
 }

@@ -6,6 +6,7 @@ use App\Http\Requests\Transaksi\StoreTransaksiRequest;
 use App\Models\Produk;
 use App\Models\Transaksi;
 use App\Services\Transaction\TransaksiService;
+use App\Services\Transaction\VoidTransaksiService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -13,7 +14,8 @@ use Illuminate\Support\Facades\DB;
 class TransaksiController extends Controller
 {
     public function __construct(
-        private readonly TransaksiService $transaksiService
+        private readonly TransaksiService $transaksiService,
+        private readonly VoidTransaksiService $voidService
     ) {}
 
     /**
@@ -157,11 +159,16 @@ class TransaksiController extends Controller
     }
 
     /**
-     * GET /api/kasir/transaksi/{id} — SD-05
+     * GET /api/kasir/transaksi/{id} — SD-05 + SD-17
      *
-     * Dipakai frontend sebelum kasir mengajukan retur — tampilkan item + satuan.
-     * nama_satuan dan isi_satuan diambil dari detail_transaksi (snapshot),
-     * BUKAN dari produk_satuan, agar riwayat tidak berubah jika satuan diedit.
+     * Dipakai untuk dua keperluan:
+     * 1. Sebelum retur — kasir lihat item + satuan snapshot
+     * 2. Sebelum void  — frontend cek can_void + sisa_waktu_void sebelum tampilkan tombol
+     *
+     * Tiga field tambahan untuk void (SD-17):
+     * - can_void       : true jika semua 4 kondisi eligibility terpenuhi
+     * - sisa_waktu_void: sisa detik dalam window void (0 jika expired)
+     * - void_reason    : string alasan jika can_void=false, null jika can_void=true
      */
     public function show(int $id): JsonResponse
     {
@@ -177,11 +184,15 @@ class TransaksiController extends Controller
         // Cek kepemilikan: kasir hanya boleh lihat transaksi miliknya sendiri
         // Owner boleh lihat semua
         $authRole   = request()->input('auth_role_name');
-        $authUserId = request()->input('auth_user_id');
+        $authUserId = (int) request()->input('auth_user_id');
 
         if ($authRole !== 'owner' && $transaksi->user_id !== $authUserId) {
             return response()->json(['message' => 'Akses ditolak'], 403);
         }
+
+        // Cek eligibility void — dijalankan untuk semua request show() karena
+        // frontend membutuhkan info ini untuk menampilkan/menyembunyikan tombol void
+        $voidInfo = $this->voidService->checkVoidEligibility($id);
 
         return response()->json([
             'data' => [
@@ -189,6 +200,7 @@ class TransaksiController extends Controller
                 'no_transaksi'      => $transaksi->no_transaksi,
                 'status'            => $transaksi->status,
                 'tanggal_transaksi' => $transaksi->tanggal_transaksi,
+                'total'             => (float) $transaksi->total,
                 'customer'          => $transaksi->customer
                     ? ['id' => $transaksi->customer->id, 'nama' => $transaksi->customer->nama]
                     : null,
@@ -199,9 +211,14 @@ class TransaksiController extends Controller
                     'nama_satuan'  => $d->nama_satuan,
                     'isi_satuan'   => $d->isi_satuan,
                     'qty'          => $d->qty,
-                    'harga_satuan' => $d->harga_satuan,
-                    'subtotal'     => $d->subtotal,
+                    'harga_satuan' => (float) $d->harga_satuan,
+                    'subtotal'     => (float) $d->subtotal,
+                    'is_bonus'     => (bool) $d->is_bonus,
                 ])->values(),
+                // ── SD-17: Info void ─────────────────────────────────────────
+                'can_void'        => $voidInfo['eligible'],
+                'sisa_waktu_void' => $voidInfo['sisa_detik'] ?? 0,
+                'void_reason'     => $voidInfo['reason'],
             ],
         ], 200);
     }

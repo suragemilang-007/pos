@@ -19,9 +19,10 @@ const { createPool }                       = require('./config/database');
 const { start: startHttp }                 = require('./producers/httpServer');
 const { start: startWs }                   = require('./websocket/wsServer');
 const wsService                            = require('./services/wsService');
-const { start: startTransactionConsumer }  = require('./consumers/transactionConsumer');
-const { start: startPurchaseConsumer }     = require('./consumers/purchaseConsumer');
-const { start: startReturnConsumer }       = require('./consumers/returnConsumer');
+const { start: startTransactionConsumer }          = require('./consumers/transactionConsumer');
+const { startVoidConsumer, stopVoidConsumer }       = require('./consumers/voidConsumer');
+const { start: startPurchaseConsumer }             = require('./consumers/purchaseConsumer');
+const { start: startReturnConsumer }               = require('./consumers/returnConsumer');
 
 // ─── Referensi untuk graceful shutdown ───────────────────────────────────────
 let httpServer    = null;
@@ -131,8 +132,9 @@ async function main() {
     console.log('[MAIN] HTTP producer endpoint siap');
 
     // ── Step 5: Kafka Consumers ───────────────────────────────────────────────
-    // Dijalankan paralel — masing-masing group ID berbeda, tidak ada konflik
-    // meski purchaseConsumer dan returnConsumer subscribe ke topic yang sama.
+    // transaction, purchase, return dijalankan paralel (group ID berbeda, aman).
+    // voidConsumer distart terpisah setelah ketiganya siap, dengan named lifecycle
+    // function agar bisa di-stop secara eksplisit di shutdown() via stopVoidConsumer().
     try {
         const [trxConsumer, poConsumer, returConsumer] = await Promise.all([
             startTransactionConsumer(kafka, pool, wsService),
@@ -141,6 +143,13 @@ async function main() {
         ]);
 
         consumers = [trxConsumer, poConsumer, returConsumer];
+        console.log('[MAIN] Transaction, purchase, return consumer aktif');
+
+        // Void consumer distart setelah consumer lain siap — lifecycle dikelola
+        // sendiri via _instance di voidConsumer.js (stop via stopVoidConsumer())
+        await startVoidConsumer(kafka, pool, wsService);
+        console.log('[INIT] Void consumer aktif');
+
         console.log('[MAIN] Semua Kafka consumer aktif');
 
     } catch (err) {
@@ -166,6 +175,13 @@ async function shutdown(signal) {
         } catch (err) {
             console.error('[SHUTDOWN] Error disconnect producer:', err.message);
         }
+    }
+
+    // Void consumer dikelola via named function (bukan consumers array)
+    try {
+        await stopVoidConsumer();
+    } catch (err) {
+        console.error('[SHUTDOWN] Error disconnect void consumer:', err.message);
     }
 
     for (const consumer of consumers) {

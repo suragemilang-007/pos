@@ -1,339 +1,351 @@
 # ERD.md — Struktur Database Sistem POS Grosir
-
-> **Versi 2.0** — Update: Multi-Unit Pricing (`produk_satuan`)
+> **Versi 3.0** — Tambah: Void Transaksi + Promo Produk
 
 ## Konvensi Global
-
-- Semua harga & nilai keuangan: `DECIMAL(10,2)` — **JANGAN** pakai `FLOAT`
-- Semua primary key: `INT UNSIGNED AUTO_INCREMENT`
-- Timestamps: `TIMESTAMP` (bukan DATETIME) — otomatis UTC, hemat 4 byte
+- Harga & nilai keuangan: `DECIMAL(10,2)` — JANGAN pakai FLOAT
+- Primary key: `INT UNSIGNED AUTO_INCREMENT`
+- Timestamps: `TIMESTAMP` (bukan DATETIME)
 - Status: selalu `ENUM`, bukan `VARCHAR`
 - Soft delete: via kolom `status ENUM('aktif','nonaktif')`, bukan `deleted_at`
-- Nama tabel: `snake_case` plural
-- Nama kolom: `snake_case`
-- **Stok selalu disimpan dalam satuan terkecil (satuan_dasar)** — konversi dilakukan saat transaksi
+- Nama tabel: `snake_case` plural | Nama kolom: `snake_case`
+- **Stok selalu dalam satuan_dasar** — konversi: `qty x isi_satuan`
 
 ---
 
 ## PAKET 1: AUTENTIKASI
 
 ### Tabel: `roles`
-
-| Kolom       | Tipe             | Null | Key | Default           | Keterangan                        |
-| ----------- | ---------------- | ---- | --- | ----------------- | --------------------------------- |
-| id          | TINYINT UNSIGNED | NO   | PK  | AUTO_INCREMENT    | Max 255, hemat storage            |
-| nama_role   | VARCHAR(50)      | NO   |     | —                 | Nilai: kasir, admin_gudang, owner |
-| permissions | JSON             | YES  |     | NULL              | Array string izin akses           |
-| created_at  | TIMESTAMP        | NO   |     | CURRENT_TIMESTAMP |                                   |
+| Kolom | Tipe | Null | Key | Default | Keterangan |
+|---|---|---|---|---|---|
+| id | TINYINT UNSIGNED | NO | PK | AUTO_INCREMENT | Max 255, hemat storage |
+| nama_role | VARCHAR(50) | NO | | — | kasir, admin_gudang, owner |
+| permissions | JSON | YES | | NULL | Array string izin |
+| created_at | TIMESTAMP | NO | | CURRENT_TIMESTAMP | |
 
 ### Tabel: `users`
-
-| Kolom         | Tipe                     | Null | Key      | Default           | Keterangan                             |
-| ------------- | ------------------------ | ---- | -------- | ----------------- | -------------------------------------- |
-| id            | INT UNSIGNED             | NO   | PK       | AUTO_INCREMENT    |                                        |
-| role_id       | TINYINT UNSIGNED         | NO   | FK→roles | —                 |                                        |
-| nama          | VARCHAR(100)             | NO   |          | —                 |                                        |
-| username      | VARCHAR(50)              | NO   | UNIQUE   | —                 | Untuk login                            |
-| password_hash | VARCHAR(255)             | NO   |          | —                 | bcrypt — JANGAN expose di response API |
-| status        | ENUM('aktif','nonaktif') | NO   |          | aktif             |                                        |
-| last_login    | TIMESTAMP                | YES  |          | NULL              | Diperbarui tiap login sukses           |
-| created_at    | TIMESTAMP                | NO   |          | CURRENT_TIMESTAMP |                                        |
+| Kolom | Tipe | Null | Key | Default | Keterangan |
+|---|---|---|---|---|---|
+| id | INT UNSIGNED | NO | PK | AUTO_INCREMENT | |
+| role_id | TINYINT UNSIGNED | NO | FK→roles | — | |
+| nama | VARCHAR(100) | NO | | — | |
+| username | VARCHAR(50) | NO | UNIQUE | — | |
+| password_hash | VARCHAR(255) | NO | | — | bcrypt — JANGAN expose |
+| status | ENUM('aktif','nonaktif') | NO | | aktif | |
+| last_login | TIMESTAMP | YES | | NULL | |
+| created_at | TIMESTAMP | NO | | CURRENT_TIMESTAMP | |
 
 ### Tabel: `sessions`
-
-| Kolom      | Tipe                     | Null | Key      | Default           | Keterangan |
-| ---------- | ------------------------ | ---- | -------- | ----------------- | ---------- |
-| id         | INT UNSIGNED             | NO   | PK       | AUTO_INCREMENT    |            |
-| user_id    | INT UNSIGNED             | NO   | FK→users | —                 |            |
-| token      | VARCHAR(500)             | NO   |          | —                 | JWT token  |
-| status     | ENUM('active','revoked') | NO   |          | active            |            |
-| expired_at | TIMESTAMP                | NO   |          | —                 |            |
-| created_at | TIMESTAMP                | NO   |          | CURRENT_TIMESTAMP |            |
+| Kolom | Tipe | Null | Key | Default | Keterangan |
+|---|---|---|---|---|---|
+| id | INT UNSIGNED | NO | PK | AUTO_INCREMENT | |
+| user_id | INT UNSIGNED | NO | FK→users | — | |
+| token | VARCHAR(500) | NO | | — | JWT token |
+| status | ENUM('active','revoked') | NO | | active | |
+| expired_at | TIMESTAMP | NO | | — | |
+| created_at | TIMESTAMP | NO | | CURRENT_TIMESTAMP | |
 
 ---
 
 ## PAKET 2: TRANSAKSI PENJUALAN
 
 ### Tabel: `customers`
+| Kolom | Tipe | Null | Key | Default | Keterangan |
+|---|---|---|---|---|---|
+| id | INT UNSIGNED | NO | PK | AUTO_INCREMENT | |
+| nama | VARCHAR(100) | NO | | — | |
+| no_telp | VARCHAR(20) | NO | UNIQUE | — | Identifier bisnis |
+| alamat | TEXT | YES | | NULL | |
+| tipe_customer | ENUM('reguler','grosir') | NO | | reguler | |
+| status | ENUM('aktif','nonaktif') | NO | | aktif | Soft delete |
+| created_at | TIMESTAMP | NO | | CURRENT_TIMESTAMP | |
+| updated_at | TIMESTAMP | NO | | CURRENT_TIMESTAMP ON UPDATE | |
 
-| Kolom         | Tipe                     | Null | Key    | Default                     | Keterangan        |
-| ------------- | ------------------------ | ---- | ------ | --------------------------- | ----------------- |
-| id            | INT UNSIGNED             | NO   | PK     | AUTO_INCREMENT              |                   |
-| nama          | VARCHAR(100)             | NO   |        | —                           |                   |
-| no_telp       | VARCHAR(20)              | NO   | UNIQUE | —                           | Identifier bisnis |
-| alamat        | TEXT                     | YES  |        | NULL                        |                   |
-| tipe_customer | ENUM('reguler','grosir') | NO   |        | reguler                     |                   |
-| status        | ENUM('aktif','nonaktif') | NO   |        | aktif                       | Soft delete       |
-| created_at    | TIMESTAMP                | NO   |        | CURRENT_TIMESTAMP           |                   |
-| updated_at    | TIMESTAMP                | NO   |        | CURRENT_TIMESTAMP ON UPDATE |                   |
+### Tabel: `transaksi` ⚠️ Diperbarui v3
+| Kolom | Tipe | Null | Key | Default | Keterangan |
+|---|---|---|---|---|---|
+| id | INT UNSIGNED | NO | PK | AUTO_INCREMENT | |
+| user_id | INT UNSIGNED | NO | FK→users | — | Kasir |
+| customer_id | INT UNSIGNED | YES | FK→customers | NULL | Opsional |
+| no_transaksi | VARCHAR(30) | NO | UNIQUE | — | TRX-YYYYMMDD-XXXXX |
+| subtotal | DECIMAL(10,2) | NO | | 0.00 | Sebelum diskon |
+| diskon | DECIMAL(10,2) | NO | | 0.00 | |
+| total | DECIMAL(10,2) | NO | | 0.00 | subtotal - diskon |
+| bayar | DECIMAL(10,2) | NO | | 0.00 | |
+| kembalian | DECIMAL(10,2) | NO | | 0.00 | |
+| metode_bayar | ENUM('tunai','transfer','qris') | NO | | tunai | |
+| status | ENUM('PENDING','COMPLETED','FAILED','CANCELLED','VOIDED') | NO | | PENDING | VOIDED = dibatalkan via void |
+| tanggal_transaksi | TIMESTAMP | NO | | CURRENT_TIMESTAMP | |
+| created_at | TIMESTAMP | NO | | CURRENT_TIMESTAMP | |
 
-### Tabel: `transaksi`
+> **Perubahan v3:** Tambah nilai `VOIDED` pada ENUM status.
 
-| Kolom             | Tipe                                             | Null | Key          | Default           | Keterangan                 |
-| ----------------- | ------------------------------------------------ | ---- | ------------ | ----------------- | -------------------------- |
-| id                | INT UNSIGNED                                     | NO   | PK           | AUTO_INCREMENT    |                            |
-| user_id           | INT UNSIGNED                                     | NO   | FK→users     | —                 | Kasir yang memproses       |
-| customer_id       | INT UNSIGNED                                     | YES  | FK→customers | NULL              | Opsional                   |
-| no_transaksi      | VARCHAR(30)                                      | NO   | UNIQUE       | —                 | Format: TRX-YYYYMMDD-XXXXX |
-| subtotal          | DECIMAL(10,2)                                    | NO   |              | 0.00              | Sebelum diskon             |
-| diskon            | DECIMAL(10,2)                                    | NO   |              | 0.00              |                            |
-| total             | DECIMAL(10,2)                                    | NO   |              | 0.00              | subtotal - diskon          |
-| bayar             | DECIMAL(10,2)                                    | NO   |              | 0.00              | Uang diterima              |
-| kembalian         | DECIMAL(10,2)                                    | NO   |              | 0.00              | bayar - total              |
-| metode_bayar      | ENUM('tunai','transfer','qris')                  | NO   |              | tunai             |                            |
-| status            | ENUM('PENDING','COMPLETED','FAILED','CANCELLED') | NO   |              | PENDING           |                            |
-| tanggal_transaksi | TIMESTAMP                                        | NO   |              | CURRENT_TIMESTAMP |                            |
-| created_at        | TIMESTAMP                                        | NO   |              | CURRENT_TIMESTAMP |                            |
+### Tabel: `detail_transaksi` ⚠️ Diperbarui v3
+| Kolom | Tipe | Null | Key | Default | Keterangan |
+|---|---|---|---|---|---|
+| id | INT UNSIGNED | NO | PK | AUTO_INCREMENT | |
+| transaksi_id | INT UNSIGNED | NO | FK→transaksi | — | |
+| produk_id | INT UNSIGNED | NO | FK→produk | — | |
+| produk_satuan_id | INT UNSIGNED | YES | FK→produk_satuan | NULL | |
+| promo_id | INT UNSIGNED | YES | FK→produk_promo | NULL | Promo yang diterapkan (nullable) |
+| nama_satuan | VARCHAR(30) | NO | | pcs | Snapshot |
+| isi_satuan | INT | NO | | 1 | Snapshot |
+| qty | INT | NO | | — | |
+| harga_satuan | DECIMAL(10,2) | NO | | — | Snapshot (0 jika item bonus) |
+| diskon_item | DECIMAL(10,2) | NO | | 0.00 | Diskon dari promo |
+| subtotal | DECIMAL(10,2) | NO | | — | |
+| is_bonus | TINYINT(1) | NO | | 0 | 1 = item bonus dari promo |
 
-### Tabel: `detail_transaksi` ⚠️ Diperbarui
-
-| Kolom            | Tipe          | Null | Key              | Default        | Keterangan                               |
-| ---------------- | ------------- | ---- | ---------------- | -------------- | ---------------------------------------- |
-| id               | INT UNSIGNED  | NO   | PK               | AUTO_INCREMENT |                                          |
-| transaksi_id     | INT UNSIGNED  | NO   | FK→transaksi     | —              |                                          |
-| produk_id        | INT UNSIGNED  | NO   | FK→produk        | —              |                                          |
-| produk_satuan_id | INT UNSIGNED  | YES  | FK→produk_satuan | NULL           | Satuan yang digunakan                    |
-| nama_satuan      | VARCHAR(30)   | NO   |                  | pcs            | Snapshot nama satuan saat transaksi      |
-| isi_satuan       | INT           | NO   |                  | 1              | Snapshot isi satuan saat transaksi       |
-| qty              | INT           | NO   |                  | —              | Qty dalam satuan yang dipilih            |
-| harga_satuan     | DECIMAL(10,2) | NO   |                  | —              | Snapshot harga per satuan saat transaksi |
-| diskon_item      | DECIMAL(10,2) | NO   |                  | 0.00           |                                          |
-| subtotal         | DECIMAL(10,2) | NO   |                  | —              | harga_satuan x qty - diskon_item         |
-
-> Kolom `nama_satuan`, `isi_satuan`, `harga_satuan` adalah **snapshot** — disimpan agar
-> riwayat tidak berubah jika admin mengedit satuan di kemudian hari.
-> **Konversi stok di Consumer:** `qty_stok_berkurang = qty x isi_satuan`
+> **Perubahan v3:** Tambah `promo_id` (FK, nullable) dan `is_bonus` untuk
+> membedakan item reguler dengan item gratis dari promo.
 
 ### Tabel: `retur_penjualan`
-
-| Kolom         | Tipe                                   | Null | Key          | Default           | Keterangan                 |
-| ------------- | -------------------------------------- | ---- | ------------ | ----------------- | -------------------------- |
-| id            | INT UNSIGNED                           | NO   | PK           | AUTO_INCREMENT    |                            |
-| transaksi_id  | INT UNSIGNED                           | NO   | FK→transaksi | —                 | Harus status COMPLETED     |
-| user_id       | INT UNSIGNED                           | NO   | FK→users     | —                 |                            |
-| no_retur      | VARCHAR(30)                            | NO   | UNIQUE       | —                 | Format: RTJ-YYYYMMDD-XXXXX |
-| alasan        | TEXT                                   | NO   |              | —                 |                            |
-| total_refund  | DECIMAL(10,2)                          | NO   |              | 0.00              |                            |
-| status        | ENUM('PENDING','COMPLETED','REJECTED') | NO   |              | PENDING           |                            |
-| tanggal_retur | TIMESTAMP                              | NO   |              | CURRENT_TIMESTAMP |                            |
-| created_at    | TIMESTAMP                              | NO   |              | CURRENT_TIMESTAMP |                            |
+| Kolom | Tipe | Null | Key | Default | Keterangan |
+|---|---|---|---|---|---|
+| id | INT UNSIGNED | NO | PK | AUTO_INCREMENT | |
+| transaksi_id | INT UNSIGNED | NO | FK→transaksi | — | Harus COMPLETED |
+| user_id | INT UNSIGNED | NO | FK→users | — | |
+| no_retur | VARCHAR(30) | NO | UNIQUE | — | RTJ-YYYYMMDD-XXXXX |
+| alasan | TEXT | NO | | — | |
+| total_refund | DECIMAL(10,2) | NO | | 0.00 | |
+| status | ENUM('PENDING','COMPLETED','REJECTED') | NO | | PENDING | |
+| tanggal_retur | TIMESTAMP | NO | | CURRENT_TIMESTAMP | |
+| created_at | TIMESTAMP | NO | | CURRENT_TIMESTAMP | |
 
 ### Tabel: `detail_retur_penjualan`
+| Kolom | Tipe | Null | Key | Default | Keterangan |
+|---|---|---|---|---|---|
+| id | INT UNSIGNED | NO | PK | AUTO_INCREMENT | |
+| retur_id | INT UNSIGNED | NO | FK→retur_penjualan | — | |
+| produk_id | INT UNSIGNED | NO | FK→produk | — | |
+| nama_satuan | VARCHAR(30) | NO | | pcs | Snapshot |
+| isi_satuan | INT | NO | | 1 | Snapshot |
+| qty_retur | INT | NO | | — | |
+| harga_satuan | DECIMAL(10,2) | NO | | — | Snapshot |
+| subtotal_refund | DECIMAL(10,2) | NO | | — | |
 
-| Kolom           | Tipe          | Null | Key                | Default        | Keterangan                                             |
-| --------------- | ------------- | ---- | ------------------ | -------------- | ------------------------------------------------------ |
-| id              | INT UNSIGNED  | NO   | PK                 | AUTO_INCREMENT |                                                        |
-| retur_id        | INT UNSIGNED  | NO   | FK→retur_penjualan | —              |                                                        |
-| produk_id       | INT UNSIGNED  | NO   | FK→produk          | —              |                                                        |
-| nama_satuan     | VARCHAR(30)   | NO   |                    | pcs            | Snapshot satuan dari transaksi asal                    |
-| isi_satuan      | INT           | NO   |                    | 1              | Snapshot isi satuan dari transaksi asal                |
-| qty_retur       | INT           | NO   |                    | —              | Qty retur dalam satuan yang sama dengan transaksi asal |
-| harga_satuan    | DECIMAL(10,2) | NO   |                    | —              | Snapshot dari detail_transaksi                         |
-| subtotal_refund | DECIMAL(10,2) | NO   |                    | —              | harga_satuan x qty_retur                               |
+### Tabel: `void_transaksi` NEW
+| Kolom | Tipe | Null | Key | Default | Keterangan |
+|---|---|---|---|---|---|
+| id | INT UNSIGNED | NO | PK | AUTO_INCREMENT | |
+| transaksi_id | INT UNSIGNED | NO | FK→transaksi, UNIQUE | — | Satu transaksi hanya bisa di-void sekali |
+| transaksi_baru_id | INT UNSIGNED | YES | FK→transaksi | NULL | Transaksi koreksi pengganti (jika ada) |
+| user_id | INT UNSIGNED | NO | FK→users | — | Kasir yang melakukan void |
+| alasan | ENUM('kesalahan_input','barang_rusak_saat_transaksi','permintaan_pembeli','lainnya') | NO | | — | |
+| keterangan | TEXT | YES | | NULL | Detail tambahan |
+| status | ENUM('PENDING','COMPLETED','REJECTED') | NO | | PENDING | |
+| batas_waktu | TIMESTAMP | NO | | — | Waktu kedaluwarsa void |
+| created_at | TIMESTAMP | NO | | CURRENT_TIMESTAMP | |
+
+> **Constraint penting:** `UNIQUE KEY uq_void_transaksi (transaksi_id)` —
+> satu transaksi hanya bisa di-void satu kali.
+>
+> **Aturan void:** transaksi hanya bisa di-void jika:
+> 1. status = 'COMPLETED'
+> 2. created_at > NOW() - INTERVAL {VOID_TIME_LIMIT_MINUTES} MINUTE
+> 3. Tidak ada record di void_transaksi untuk transaksi ini
+> 4. Tidak ada record di retur_penjualan untuk transaksi ini
 
 ---
 
 ## PAKET 3: INVENTORI
 
 ### Tabel: `kategori_produk`
+| Kolom | Tipe | Null | Key | Default | Keterangan |
+|---|---|---|---|---|---|
+| id | INT UNSIGNED | NO | PK | AUTO_INCREMENT | |
+| nama_kategori | VARCHAR(100) | NO | UNIQUE | — | |
+| deskripsi | TEXT | YES | | NULL | |
+| created_at | TIMESTAMP | NO | | CURRENT_TIMESTAMP | |
 
-| Kolom         | Tipe         | Null | Key    | Default           |
-| ------------- | ------------ | ---- | ------ | ----------------- |
-| id            | INT UNSIGNED | NO   | PK     | AUTO_INCREMENT    |
-| nama_kategori | VARCHAR(100) | NO   | UNIQUE | —                 |
-| deskripsi     | TEXT         | YES  |        | NULL              |
-| created_at    | TIMESTAMP    | NO   |        | CURRENT_TIMESTAMP |
+> Tidak ada soft delete. Jika masih dipakai produk: TOLAK hapus.
 
-> Tidak ada soft delete untuk kategori.
-> Jika kategori masih dipakai produk aktif: DILARANG hapus.
-> Cek COUNT(\*) di tabel produk WHERE kategori_id=? sebelum DELETE.
+### Tabel: `produk`
+| Kolom | Tipe | Null | Key | Default | Keterangan |
+|---|---|---|---|---|---|
+| id | INT UNSIGNED | NO | PK | AUTO_INCREMENT | |
+| kategori_id | INT UNSIGNED | NO | FK→kategori_produk | — | |
+| kode_produk | VARCHAR(20) | NO | UNIQUE | — | Barcode satuan terkecil |
+| nama_produk | VARCHAR(200) | NO | | — | |
+| deskripsi | TEXT | YES | | NULL | |
+| harga_beli_dasar | DECIMAL(10,2) | NO | | 0.00 | Per satuan_dasar |
+| qty_stok | INT | NO | | 0 | Dalam satuan_dasar — diperbarui Consumer |
+| stok_minimum | INT | NO | | 0 | Trigger warning |
+| satuan_dasar | VARCHAR(30) | NO | | pcs | |
+| status | ENUM('aktif','nonaktif') | NO | | aktif | |
+| created_at | TIMESTAMP | NO | | CURRENT_TIMESTAMP | |
+| updated_at | TIMESTAMP | NO | | CURRENT_TIMESTAMP ON UPDATE | |
 
-### Tabel: `produk` ⚠️ Diperbarui dari v1
+### Tabel: `produk_satuan`
+| Kolom | Tipe | Null | Key | Default | Keterangan |
+|---|---|---|---|---|---|
+| id | INT UNSIGNED | NO | PK | AUTO_INCREMENT | |
+| produk_id | INT UNSIGNED | NO | FK→produk | — | |
+| nama_satuan | VARCHAR(30) | NO | | — | |
+| isi | INT | NO | | 1 | Berapa satuan_dasar dalam 1 unit |
+| harga_beli | DECIMAL(10,2) | NO | | 0.00 | |
+| harga_jual | DECIMAL(10,2) | NO | | 0.00 | |
+| is_default | TINYINT(1) | NO | | 0 | 1=default di form transaksi |
+| barcode | VARCHAR(50) | YES | UNIQUE | NULL | |
+| created_at | TIMESTAMP | NO | | CURRENT_TIMESTAMP | |
+| updated_at | TIMESTAMP | NO | | CURRENT_TIMESTAMP ON UPDATE | |
 
-| Kolom            | Tipe                     | Null | Key                | Default                     | Keterangan                                    |
-| ---------------- | ------------------------ | ---- | ------------------ | --------------------------- | --------------------------------------------- |
-| id               | INT UNSIGNED             | NO   | PK                 | AUTO_INCREMENT              |                                               |
-| kategori_id      | INT UNSIGNED             | NO   | FK→kategori_produk | —                           |                                               |
-| kode_produk      | VARCHAR(20)              | NO   | UNIQUE             | —                           | Barcode satuan terkecil                       |
-| nama_produk      | VARCHAR(200)             | NO   |                    | —                           |                                               |
-| deskripsi        | TEXT                     | YES  |                    | NULL                        |                                               |
-| harga_beli_dasar | DECIMAL(10,2)            | NO   |                    | 0.00                        | Harga beli per satuan_dasar                   |
-| qty_stok         | INT                      | NO   |                    | 0                           | Stok dalam satuan_dasar — diperbarui Consumer |
-| stok_minimum     | INT                      | NO   |                    | 0                           | Dalam satuan_dasar — trigger warning          |
-| satuan_dasar     | VARCHAR(30)              | NO   |                    | pcs                         | Satuan terkecil: pcs, gram, ml, dll           |
-| status           | ENUM('aktif','nonaktif') | NO   |                    | aktif                       | Soft delete                                   |
-| created_at       | TIMESTAMP                | NO   |                    | CURRENT_TIMESTAMP           |                                               |
-| updated_at       | TIMESTAMP                | NO   |                    | CURRENT_TIMESTAMP ON UPDATE |                                               |
+> UNIQUE KEY: `uq_produk_satuan (produk_id, nama_satuan)`
 
-> **Perubahan dari v1:** Kolom `satuan ENUM` dan `harga_jual` DIHAPUS dari tabel produk.
-> Diganti dengan `satuan_dasar VARCHAR` dan `harga_beli_dasar`.
-> Semua harga jual kini ada di tabel `produk_satuan`.
+### Tabel: `produk_promo` NEW
+| Kolom | Tipe | Null | Key | Default | Keterangan |
+|---|---|---|---|---|---|
+| id | INT UNSIGNED | NO | PK | AUTO_INCREMENT | |
+| produk_id | INT UNSIGNED | NO | FK→produk | — | Produk yang promo |
+| produk_satuan_id | INT UNSIGNED | NO | FK→produk_satuan | — | Satuan syarat beli |
+| nama_promo | VARCHAR(200) | NO | | — | Teks deskriptif: "Beli 5 Gratis 1" |
+| tipe_promo | ENUM('bonus_produk_sama','bonus_produk_lain','diskon_persen','diskon_nominal') | NO | | — | |
+| min_qty | INT | NO | | 1 | Minimum qty beli (syarat) |
+| bonus_qty | INT | YES | | NULL | Qty bonus (untuk tipe bonus) |
+| bonus_produk_id | INT UNSIGNED | YES | FK→produk | NULL | Produk bonus (tipe bonus_produk_lain) |
+| bonus_satuan_id | INT UNSIGNED | YES | FK→produk_satuan | NULL | Satuan produk bonus |
+| diskon_nilai | DECIMAL(10,2) | YES | | NULL | Nilai diskon (% atau nominal Rp) |
+| keterangan | TEXT | YES | | NULL | Catatan tambahan untuk kasir |
+| is_active | TINYINT(1) | NO | | 1 | 1=aktif |
+| berlaku_dari | DATE | YES | | NULL | NULL = berlaku mulai sekarang |
+| berlaku_sampai | DATE | YES | | NULL | NULL = tidak ada batas akhir |
+| created_at | TIMESTAMP | NO | | CURRENT_TIMESTAMP | |
+| updated_at | TIMESTAMP | NO | | CURRENT_TIMESTAMP ON UPDATE | |
 
-### Tabel: `produk_satuan` NEW
-
-| Kolom       | Tipe          | Null | Key       | Default                     | Keterangan                              |
-| ----------- | ------------- | ---- | --------- | --------------------------- | --------------------------------------- |
-| id          | INT UNSIGNED  | NO   | PK        | AUTO_INCREMENT              |                                         |
-| produk_id   | INT UNSIGNED  | NO   | FK→produk | —                           |                                         |
-| nama_satuan | VARCHAR(30)   | NO   |           | —                           | Contoh: pcs, renteng, karton, lusin, kg |
-| isi         | INT           | NO   |           | 1                           | Berapa satuan_dasar dalam 1 unit ini    |
-| harga_beli  | DECIMAL(10,2) | NO   |           | 0.00                        | Harga beli per unit satuan ini          |
-| harga_jual  | DECIMAL(10,2) | NO   |           | 0.00                        | Harga jual per unit satuan ini          |
-| is_default  | TINYINT(1)    | NO   |           | 0                           | 1 = satuan default di form transaksi    |
-| barcode     | VARCHAR(50)   | YES  | UNIQUE    | NULL                        | Barcode khusus satuan ini               |
-| created_at  | TIMESTAMP     | NO   |           | CURRENT_TIMESTAMP           |                                         |
-| updated_at  | TIMESTAMP     | NO   |           | CURRENT_TIMESTAMP ON UPDATE |                                         |
-
-> **Unique constraint:** `UNIQUE KEY uq_produk_satuan (produk_id, nama_satuan)`
-> Satu produk tidak boleh punya dua entri dengan nama satuan yang sama.
-
-**Contoh data — Kopi Kapal Api 165g:**
-
-```
-produk: id=1, satuan_dasar='pcs', qty_stok=960, harga_beli_dasar=3000
-
-produk_satuan:
- id | produk_id | nama_satuan | isi |  harga_beli | harga_jual | is_default
-  1 |     1     |    pcs      |  1  |    3.000    |   3.500    |     1      <- default
-  2 |     1     |  renteng    | 10  |   28.000    |  31.500    |     0
-  3 |     1     |  karton     | 96  |  252.000    | 280.000    |     0
-
-Stok tersedia per satuan:
-  pcs     : 960 / 1  = 960 pcs
-  renteng : 960 / 10 =  96 renteng
-  karton  : 960 / 96 =  10 karton
-
-Harga efektif per pcs:
-  pcs     : 3.500 / 1  = 3.500/pcs  (baseline)
-  renteng : 31.500 / 10 = 3.150/pcs  (hemat 10%)
-  karton  : 280.000 / 96 = 2.916/pcs  (hemat 16%)
-```
+> **Validasi tipe_promo:**
+> - `bonus_produk_sama`: wajib `bonus_qty`, `bonus_produk_id` NULL
+> - `bonus_produk_lain`: wajib `bonus_qty`, `bonus_produk_id`, `bonus_satuan_id`
+> - `diskon_persen`: wajib `diskon_nilai` (0-100), kolom bonus NULL
+> - `diskon_nominal`: wajib `diskon_nilai` (> 0), kolom bonus NULL
+>
+> **Promo aktif query:**
+> ```sql
+> WHERE is_active = 1
+>   AND (berlaku_dari IS NULL OR berlaku_dari <= CURDATE())
+>   AND (berlaku_sampai IS NULL OR berlaku_sampai >= CURDATE())
+> ```
 
 ### Tabel: `suppliers`
+| Kolom | Tipe | Null | Key | Default |
+|---|---|---|---|---|
+| id | INT UNSIGNED | NO | PK | AUTO_INCREMENT |
+| nama_supplier | VARCHAR(150) | NO | | — |
+| kontak_person | VARCHAR(100) | YES | | NULL |
+| no_telp | VARCHAR(20) | NO | UNIQUE | — |
+| alamat | TEXT | YES | | NULL |
+| status | ENUM('aktif','nonaktif') | NO | | aktif |
+| created_at | TIMESTAMP | NO | | CURRENT_TIMESTAMP |
+| updated_at | TIMESTAMP | NO | | CURRENT_TIMESTAMP ON UPDATE |
 
-| Kolom         | Tipe                     | Null | Key    | Default                     |
-| ------------- | ------------------------ | ---- | ------ | --------------------------- |
-| id            | INT UNSIGNED             | NO   | PK     | AUTO_INCREMENT              |
-| nama_supplier | VARCHAR(150)             | NO   |        | —                           |
-| kontak_person | VARCHAR(100)             | YES  |        | NULL                        |
-| no_telp       | VARCHAR(20)              | NO   | UNIQUE | —                           |
-| alamat        | TEXT                     | YES  |        | NULL                        |
-| status        | ENUM('aktif','nonaktif') | NO   |        | aktif                       |
-| created_at    | TIMESTAMP                | NO   |        | CURRENT_TIMESTAMP           |
-| updated_at    | TIMESTAMP                | NO   |        | CURRENT_TIMESTAMP ON UPDATE |
-
-### Tabel: `produk_supplier` (Junction N:M)
-
-| Kolom        | Tipe          | Null | Key          | Default           | Keterangan                                |
-| ------------ | ------------- | ---- | ------------ | ----------------- | ----------------------------------------- |
-| id           | INT UNSIGNED  | NO   | PK           | AUTO_INCREMENT    |                                           |
-| produk_id    | INT UNSIGNED  | NO   | FK→produk    | —                 |                                           |
-| supplier_id  | INT UNSIGNED  | NO   | FK→suppliers | —                 |                                           |
-| harga_suplai | DECIMAL(10,2) | NO   |              | 0.00              | Harga beli dari supplier per satuan_dasar |
-| is_primary   | TINYINT(1)    | NO   |              | 0                 | 1 = supplier utama produk ini             |
-| created_at   | TIMESTAMP     | NO   |              | CURRENT_TIMESTAMP |                                           |
+### Tabel: `produk_supplier`
+| Kolom | Tipe | Null | Key | Default | Keterangan |
+|---|---|---|---|---|---|
+| id | INT UNSIGNED | NO | PK | AUTO_INCREMENT | |
+| produk_id | INT UNSIGNED | NO | FK→produk | — | |
+| supplier_id | INT UNSIGNED | NO | FK→suppliers | — | |
+| harga_suplai | DECIMAL(10,2) | NO | | 0.00 | Per satuan_dasar |
+| is_primary | TINYINT(1) | NO | | 0 | 1=supplier utama |
+| created_at | TIMESTAMP | NO | | CURRENT_TIMESTAMP | |
 
 ---
 
-## PAKET 4: PEMBELIAN (RESTOCK)
+## PAKET 4: PEMBELIAN
 
 ### Tabel: `pembelian`
+| Kolom | Tipe | Null | Key | Default | Keterangan |
+|---|---|---|---|---|---|
+| id | INT UNSIGNED | NO | PK | AUTO_INCREMENT | |
+| user_id | INT UNSIGNED | NO | FK→users | — | Admin Gudang |
+| supplier_id | INT UNSIGNED | NO | FK→suppliers | — | |
+| no_pembelian | VARCHAR(30) | NO | UNIQUE | — | PO-YYYYMMDD-XXXXX |
+| total | DECIMAL(10,2) | NO | | 0.00 | |
+| status | ENUM('PENDING','COMPLETED','CANCELLED') | NO | | PENDING | |
+| tanggal_pembelian | DATE | NO | | — | DATE bukan TIMESTAMP |
+| created_at | TIMESTAMP | NO | | CURRENT_TIMESTAMP | |
+| updated_at | TIMESTAMP | NO | | CURRENT_TIMESTAMP ON UPDATE | |
 
-| Kolom             | Tipe                                    | Null | Key          | Default                     | Keterangan                |
-| ----------------- | --------------------------------------- | ---- | ------------ | --------------------------- | ------------------------- |
-| id                | INT UNSIGNED                            | NO   | PK           | AUTO_INCREMENT              |                           |
-| user_id           | INT UNSIGNED                            | NO   | FK→users     | —                           | Admin Gudang              |
-| supplier_id       | INT UNSIGNED                            | NO   | FK→suppliers | —                           |                           |
-| no_pembelian      | VARCHAR(30)                             | NO   | UNIQUE       | —                           | Format: PO-YYYYMMDD-XXXXX |
-| total             | DECIMAL(10,2)                           | NO   |              | 0.00                        |                           |
-| status            | ENUM('PENDING','COMPLETED','CANCELLED') | NO   |              | PENDING                     |                           |
-| tanggal_pembelian | DATE                                    | NO   |              | —                           | DATE bukan TIMESTAMP      |
-| created_at        | TIMESTAMP                               | NO   |              | CURRENT_TIMESTAMP           |                           |
-| updated_at        | TIMESTAMP                               | NO   |              | CURRENT_TIMESTAMP ON UPDATE |                           |
-
-### Tabel: `detail_pembelian` ⚠️ Diperbarui
-
-| Kolom             | Tipe          | Null | Key              | Default        | Keterangan                     |
-| ----------------- | ------------- | ---- | ---------------- | -------------- | ------------------------------ |
-| id                | INT UNSIGNED  | NO   | PK               | AUTO_INCREMENT |                                |
-| pembelian_id      | INT UNSIGNED  | NO   | FK→pembelian     | —              |                                |
-| produk_id         | INT UNSIGNED  | NO   | FK→produk        | —              |                                |
-| produk_satuan_id  | INT UNSIGNED  | YES  | FK→produk_satuan | NULL           | Satuan pembelian               |
-| nama_satuan       | VARCHAR(30)   | NO   |                  | pcs            | Snapshot nama satuan           |
-| isi_satuan        | INT           | NO   |                  | 1              | Snapshot isi satuan            |
-| qty               | INT           | NO   |                  | —              | Qty dalam satuan yang dipilih  |
-| harga_beli_satuan | DECIMAL(10,2) | NO   |                  | —              | Harga beli per unit satuan ini |
-| subtotal          | DECIMAL(10,2) | NO   |                  | —              | harga_beli_satuan x qty        |
-
-> **Konversi stok di Consumer:** `qty_stok_bertambah = qty x isi_satuan`
+### Tabel: `detail_pembelian`
+| Kolom | Tipe | Null | Key | Default | Keterangan |
+|---|---|---|---|---|---|
+| id | INT UNSIGNED | NO | PK | AUTO_INCREMENT | |
+| pembelian_id | INT UNSIGNED | NO | FK→pembelian | — | |
+| produk_id | INT UNSIGNED | NO | FK→produk | — | |
+| produk_satuan_id | INT UNSIGNED | YES | FK→produk_satuan | NULL | |
+| nama_satuan | VARCHAR(30) | NO | | pcs | Snapshot |
+| isi_satuan | INT | NO | | 1 | Snapshot |
+| qty | INT | NO | | — | |
+| harga_beli_satuan | DECIMAL(10,2) | NO | | — | |
+| subtotal | DECIMAL(10,2) | NO | | — | |
 
 ### Tabel: `retur_pembelian`
-
-| Kolom         | Tipe                                   | Null | Key          | Default           | Keterangan                 |
-| ------------- | -------------------------------------- | ---- | ------------ | ----------------- | -------------------------- |
-| id            | INT UNSIGNED                           | NO   | PK           | AUTO_INCREMENT    |                            |
-| pembelian_id  | INT UNSIGNED                           | NO   | FK→pembelian | —                 | Harus status COMPLETED     |
-| user_id       | INT UNSIGNED                           | NO   | FK→users     | —                 | Admin Gudang               |
-| no_retur      | VARCHAR(30)                            | NO   | UNIQUE       | —                 | Format: RTP-YYYYMMDD-XXXXX |
-| alasan        | TEXT                                   | NO   |              | —                 |                            |
-| total_kredit  | DECIMAL(10,2)                          | NO   |              | 0.00              | Kredit ke supplier         |
-| status        | ENUM('PENDING','COMPLETED','REJECTED') | NO   |              | PENDING           |                            |
-| tanggal_retur | TIMESTAMP                              | NO   |              | CURRENT_TIMESTAMP |                            |
-| created_at    | TIMESTAMP                              | NO   |              | CURRENT_TIMESTAMP |                            |
+| Kolom | Tipe | Null | Key | Default | Keterangan |
+|---|---|---|---|---|---|
+| id | INT UNSIGNED | NO | PK | AUTO_INCREMENT | |
+| pembelian_id | INT UNSIGNED | NO | FK→pembelian | — | |
+| user_id | INT UNSIGNED | NO | FK→users | — | |
+| no_retur | VARCHAR(30) | NO | UNIQUE | — | RTP-YYYYMMDD-XXXXX |
+| alasan | TEXT | NO | | — | |
+| total_kredit | DECIMAL(10,2) | NO | | 0.00 | |
+| status | ENUM('PENDING','COMPLETED','REJECTED') | NO | | PENDING | |
+| tanggal_retur | TIMESTAMP | NO | | CURRENT_TIMESTAMP | |
+| created_at | TIMESTAMP | NO | | CURRENT_TIMESTAMP | |
 
 ### Tabel: `detail_retur_pembelian`
-
-| Kolom              | Tipe          | Null | Key                | Default        | Keterangan                       |
-| ------------------ | ------------- | ---- | ------------------ | -------------- | -------------------------------- |
-| id                 | INT UNSIGNED  | NO   | PK                 | AUTO_INCREMENT |                                  |
-| retur_pembelian_id | INT UNSIGNED  | NO   | FK→retur_pembelian | —              |                                  |
-| produk_id          | INT UNSIGNED  | NO   | FK→produk          | —              |                                  |
-| nama_satuan        | VARCHAR(30)   | NO   |                    | pcs            | Snapshot dari detail_pembelian   |
-| isi_satuan         | INT           | NO   |                    | 1              | Snapshot dari detail_pembelian   |
-| qty_retur          | INT           | NO   |                    | —              | Qty retur dalam satuan yang sama |
-| harga_satuan       | DECIMAL(10,2) | NO   |                    | —              | Snapshot dari detail_pembelian   |
-| subtotal_kredit    | DECIMAL(10,2) | NO   |                    | —              | harga_satuan x qty_retur         |
+| Kolom | Tipe | Null | Key | Default | Keterangan |
+|---|---|---|---|---|---|
+| id | INT UNSIGNED | NO | PK | AUTO_INCREMENT | |
+| retur_pembelian_id | INT UNSIGNED | NO | FK→retur_pembelian | — | |
+| produk_id | INT UNSIGNED | NO | FK→produk | — | |
+| nama_satuan | VARCHAR(30) | NO | | pcs | Snapshot |
+| isi_satuan | INT | NO | | 1 | Snapshot |
+| qty_retur | INT | NO | | — | |
+| harga_satuan | DECIMAL(10,2) | NO | | — | Snapshot |
+| subtotal_kredit | DECIMAL(10,2) | NO | | — | |
 
 ---
 
 ## Ringkasan Relasi
 
-| Tabel A           | Tabel B                | Relasi  | Keterangan                                  |
-| ----------------- | ---------------------- | ------- | ------------------------------------------- |
-| roles             | users                  | 1:N     | Satu role dimiliki banyak user              |
-| users             | sessions               | 1:N     | Multi-device session                        |
-| users             | transaksi              | 1:N     | Kasir memproses banyak transaksi            |
-| users             | retur_penjualan        | 1:N     |                                             |
-| users             | pembelian              | 1:N     | Admin gudang buat banyak PO                 |
-| users             | retur_pembelian        | 1:N     |                                             |
-| customers         | transaksi              | 1:N     |                                             |
-| kategori_produk   | produk                 | 1:N     |                                             |
-| **produk**        | **produk_satuan**      | **1:N** | Satu produk punya banyak satuan dan harga   |
-| produk            | suppliers              | N:M     | Via produk_supplier                         |
-| **produk_satuan** | **detail_transaksi**   | **1:N** | Satuan yang dipakai di tiap baris transaksi |
-| **produk_satuan** | **detail_pembelian**   | **1:N** | Satuan yang dipakai di tiap baris PO        |
-| transaksi         | detail_transaksi       | 1:N     | Composition                                 |
-| transaksi         | retur_penjualan        | 1:N     | Retur parsial diizinkan                     |
-| retur_penjualan   | detail_retur_penjualan | 1:N     | Composition                                 |
-| suppliers         | pembelian              | 1:N     |                                             |
-| pembelian         | detail_pembelian       | 1:N     | Composition                                 |
-| pembelian         | retur_pembelian        | 1:N     |                                             |
-| retur_pembelian   | detail_retur_pembelian | 1:N     | Composition                                 |
+| Tabel A | Tabel B | Relasi | Keterangan |
+|---|---|---|---|
+| roles | users | 1:N | |
+| users | sessions | 1:N | |
+| users | transaksi | 1:N | |
+| users | retur_penjualan | 1:N | |
+| users | void_transaksi | 1:N | Kasir yang melakukan void |
+| users | pembelian | 1:N | |
+| users | retur_pembelian | 1:N | |
+| customers | transaksi | 1:N | |
+| kategori_produk | produk | 1:N | |
+| produk | produk_satuan | 1:N | Multi-unit pricing |
+| produk | produk_promo | 1:N | Satu produk bisa punya banyak promo |
+| produk | suppliers | N:M | Via produk_supplier |
+| produk_satuan | detail_transaksi | 1:N | |
+| produk_satuan | detail_pembelian | 1:N | |
+| produk_satuan | produk_promo | 1:N | Satuan syarat promo |
+| produk_promo | detail_transaksi | 1:N | Audit promo yang diterapkan |
+| transaksi | detail_transaksi | 1:N | Composition |
+| transaksi | retur_penjualan | 1:N | |
+| transaksi | void_transaksi | 1:1 | Satu transaksi max satu void |
+| void_transaksi | transaksi | 1:1 | transaksi_baru_id (nullable) |
+| retur_penjualan | detail_retur_penjualan | 1:N | |
+| suppliers | pembelian | 1:N | |
+| pembelian | detail_pembelian | 1:N | |
+| pembelian | retur_pembelian | 1:N | |
+| retur_pembelian | detail_retur_pembelian | 1:N | |
 
 ---
 
-## Aturan Kritis Consumer Kafka (Wajib Diikuti)
+## Aturan Kritis Consumer Kafka
 
 ```
-SEMUA update stok harus menggunakan konversi satuan:
+KONVERSI SATUAN (semua operasi stok):
+qty_berubah = qty x isi_satuan
 
-qty_berkurang (transaksi jual)   = item.qty x item.isi_satuan
-qty_bertambah (pembelian)        = item.qty x item.isi_satuan
-qty_bertambah (retur penjualan)  = item.qty_retur x item.isi_satuan
-qty_berkurang (retur pembelian)  = item.qty_retur x item.isi_satuan
+VOID TRANSAKSI:
+qty_kembali = qty x isi_satuan (untuk setiap item REGULER)
+Item is_bonus=1: tidak perlu dikembalikan ke stok
+(barang bonus sudah keluar dan tidak dicatat sebagai penjualan berbayar)
 
-Contoh:
-  Kasir jual 2 karton kopi (isi=96)  -> stok berkurang: 2 x 96 = 192 pcs
-  Admin beli 5 karton kopi (isi=96)  -> stok bertambah: 5 x 96 = 480 pcs
-  Retur 1 renteng kopi (isi=10)      -> stok bertambah: 1 x 10 = 10 pcs
+ENV WAJIB DITAMBAH:
+VOID_TIME_LIMIT_MINUTES=30  (batas waktu void dalam menit)
 ```

@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Transaksi extends Model
 {
@@ -61,5 +62,11 @@ class Transaksi extends Model
     public function returPenjualan(): HasMany
     {
         return $this->hasMany(ReturPenjualan::class, 'transaksi_id');
+    }
+
+    // Satu transaksi maksimal satu void — UNIQUE KEY uq_void_transaksi di DB menjamin ini
+    public function voidTransaksi(): HasOne
+    {
+        return $this->hasOne(VoidTransaksi::class, 'transaksi_id');
     }
 }

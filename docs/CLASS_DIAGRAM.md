@@ -1,50 +1,29 @@
 # CLASS_DIAGRAM.md — Referensi Method & Class
+> **Versi 3.0** — Tambah: VoidTransaksiService + PromoService
 
-> **Versi 2.0** — Update: ProdukSatuan + multi-unit pricing
-
-## Panduan Penggunaan
-
-Setiap method di sini HARUS diimplementasikan dengan nama yang persis sama.
-Jangan rename method tanpa update file ini terlebih dahulu.
-Tipe parameter menggunakan konvensi PHP: `string`, `int`, `float`, `bool`, `array`, `?int` (nullable).
+## Panduan
+Nama method HARUS identik dengan implementasi.
+Tipe: `string`, `int`, `float`, `bool`, `array`, `?int` (nullable).
 
 ---
 
 ## DOMAIN: AUTH
 
 ### UserService — `app/Services/Auth/UserService.php`
-
 ```
 login(username: string, password: string): array
-  Return: {token, role: {id, nama}, user: {id, nama, username}}
-  JANGAN sertakan password_hash
-
 logout(token: string): bool
-
 validateToken(token: string): bool
-
 resetPassword(userId: int, newPassword: string): bool
-  Hash bcrypt sebelum simpan
-
 updateStatus(userId: int, status: string): bool
-  Jika status='nonaktif': panggil SessionService::revokeAllByUser() sesudahnya
 ```
 
 ### SessionService — `app/Services/Auth/SessionService.php`
-
 ```
 create(userId: int): string
-  INSERT ke sessions, return JWT token
-
 isValid(token: string): bool
-  Cek: status='active' AND expired_at > NOW()
-
 revoke(token: string): bool
-  UPDATE sessions SET status='revoked'
-
 revokeAllByUser(userId: int): bool
-  UPDATE sessions SET status='revoked' WHERE user_id=?
-  Dipakai saat user dinonaktifkan oleh Owner
 ```
 
 ---
@@ -52,64 +31,65 @@ revokeAllByUser(userId: int): bool
 ## DOMAIN: TRANSACTION
 
 ### TransaksiService — `app/Services/Transaction/TransaksiService.php`
-
 ```
 create(items: array, customerId: ?int, userId: int): Transaksi
-  items item: {produk_id, produk_satuan_id, nama_satuan, isi_satuan, qty, harga_satuan, diskon_item}
-  Langkah: calculateTotal() -> generate no_transaksi -> INSERT transaksi+detail -> publishKafka
-  Return: Transaksi dengan status PENDING
+  items item: {produk_id, produk_satuan_id, nama_satuan, isi_satuan,
+               qty, harga_satuan, diskon_item, promo_id?, is_bonus}
+  is_bonus=true: item dari promo, harga_satuan=0
 
 calculateTotal(items: array): float
-  Sum dari (harga_satuan x qty - diskon_item) per item
+  Hitung dari item non-bonus saja (is_bonus=false)
 
 updateStatus(id: int, status: string): bool
 
 generateStruk(id: int): string
-  Return HTML string
-  Query: JOIN transaksi + detail_transaksi + produk + info toko
-  Tampilkan: nama_satuan dan qty per baris
+  Include: nama_satuan, is_bonus, nama_promo per baris item
 
 canReturn(id: int): bool
-  Return true hanya jika status='COMPLETED'
+  true hanya jika status='COMPLETED' DAN status BUKAN 'VOIDED'
+```
+
+### VoidTransaksiService — `app/Services/Transaction/VoidTransaksiService.php`
+```
+checkVoidEligibility(transaksiId: int): array
+  Return: {eligible: bool, reason: ?string, sisa_detik: ?int}
+  Validasi 4 kondisi berurutan:
+  1. status = 'COMPLETED'
+  2. created_at > NOW() - INTERVAL {env:VOID_TIME_LIMIT_MINUTES} MINUTE
+  3. Belum ada record di void_transaksi WHERE transaksi_id=?
+  4. Belum ada record di retur_penjualan WHERE transaksi_id=?
+  Return reason spesifik per kondisi jika tidak eligible
+
+create(transaksiId: int, userId: int, alasan: string, keterangan: ?string): VoidTransaksi
+  1. checkVoidEligibility() ulang (race condition guard)
+  2. INSERT void_transaksi status='PENDING'
+  3. Publish KafkaProducerService::publishTransactionVoid()
+  4. Return VoidTransaksi
+
+getSisaWaktuVoid(transaksi: Transaksi): int
+  Return sisa detik (0 jika sudah expired)
+  Hitung: VOID_TIME_LIMIT_MINUTES*60 - selisih_detik_sejak_transaksi
 ```
 
 ### ReturPenjualanService — `app/Services/Transaction/ReturPenjualanService.php`
-
 ```
 create(transaksiId: int, itemsRetur: array, alasan: string, userId: int): ReturPenjualan
-  itemsRetur item: {produk_id, nama_satuan, isi_satuan, qty_retur, harga_satuan}
-  Snapshot nama_satuan dan isi_satuan dari detail_transaksi asal
-
 validate(transaksiId: int, itemsRetur: array): bool
-  Cek: transaksi status=COMPLETED
-  Cek: qty_retur <= qty_beli_asli per produk
-
+  Cek tambahan v3: transaksi status BUKAN 'VOIDED'
 calculateRefund(itemsRetur: array): float
-  Sum dari (harga_satuan x qty_retur) per item
+  Hitung hanya dari item is_bonus=false (item bonus tidak di-refund)
 ```
 
 ### CustomerService — `app/Services/Inventory/CustomerService.php`
-
 ```
 getRiwayatBelanja(customerId: int, page: int, limit: int): array
-  Include: total_belanja (SUM), frekuensi (COUNT)
-
 getTotalBelanja(customerId: int): float
-
 getFrekuensiBelanja(customerId: int): int
-
 create(data: array): Customer
-
 update(customerId: int, data: array): bool
-
 softDelete(customerId: int): bool
-  UPDATE status='nonaktif'
-
 hardDelete(customerId: int): bool
-  DELETE FROM customers
-
 hasTransaksi(customerId: int): bool
-  Cek COUNT(*) di tabel transaksi WHERE customer_id=?
 ```
 
 ---
@@ -117,82 +97,82 @@ hasTransaksi(customerId: int): bool
 ## DOMAIN: INVENTORY
 
 ### ProdukService — `app/Services/Inventory/ProdukService.php`
-
 ```
 create(data: array): Produk
-  data wajib: kode_produk, nama_produk, kategori_id, satuan_dasar, harga_beli_dasar
-
 update(id: int, data: array): bool
-
 softDelete(id: int): bool
-
 hardDelete(id: int): bool
-
 hasTransaksi(produkId: int): bool
-  Cek COUNT(*) di detail_transaksi WHERE produk_id=?
-
 updateStok(produkId: int, qtyDasar: int, operasi: string): bool
-  WAJIB: qtyDasar sudah dalam satuan_dasar (sudah dikonversi)
-  operasi: 'tambah' | 'kurangi'
-
 isStokCukup(produkId: int, qty: int, isiSatuan: int): bool
-  Cek: qty_stok >= qty x isiSatuan
-
 isStokRendah(produkId: int): bool
-  Cek: qty_stok <= stok_minimum
-
 getByKode(kode: string): ?Produk
-  Query produk berdasarkan kode_produk status='aktif'
-  INCLUDE relasi produk_satuan (eager load)
-
+  INCLUDE eager load: satuanList(), promoAktif()
 getStokDalamSatuan(produkId: int): array
-  Return list satuan dengan stok masing-masing:
-  [{id, nama_satuan, isi, harga_jual, stok_dalam_satuan_ini, is_default}]
-  stok_dalam_satuan_ini = floor(qty_stok / isi)
 ```
 
 ### ProdukSatuanService — `app/Services/Inventory/ProdukSatuanService.php`
-
 ```
 getSatuanList(produkId: int): Collection
-  Return semua satuan produk, urut: is_default DESC, isi ASC
-
 getSatuanDefault(produkId: int): ?ProdukSatuan
-  Return satuan dengan is_default=1
-
 getSatuanByBarcode(barcode: string): ?ProdukSatuan
-  Untuk scan barcode satuan besar (karton, dll)
-
 create(produkId: int, data: array): ProdukSatuan
-  data: {nama_satuan, isi, harga_beli, harga_jual, is_default, barcode?}
-  Jika is_default=1: reset semua satuan lain di produk ini menjadi 0
+update(id: int, data: array): bool
+delete(id: int): bool
+getHargaEfektifPerDasar(satuanId: int): float
+getHematPersen(produkId: int, satuanId: int): float
+```
+
+### KategoriProdukService — `app/Services/Inventory/KategoriProdukService.php`
+```
+getAll(): Collection
+create(data: array): KategoriProduk
+update(id: int, data: array): bool
+delete(id: int): bool
+hasProduk(id: int): bool
+```
+
+### PromoService — `app/Services/Inventory/PromoService.php`
+```
+getAll(filters: array): Collection
+  filters: {produk_id?, status?, nama?}
+
+getByProduk(produkId: int): Collection
+  Return semua promo produk tersebut (aktif maupun tidak)
+
+getPromoAktif(produkId: int): Collection
+  Return promo yang berlaku hari ini:
+  WHERE is_active=1
+    AND (berlaku_dari IS NULL OR berlaku_dari <= CURDATE())
+    AND (berlaku_sampai IS NULL OR berlaku_sampai >= CURDATE())
+
+create(data: array): ProdukPromo
+  Validasi sesuai tipe_promo:
+  - bonus_produk_sama: wajib bonus_qty, bonus_produk_id null
+  - bonus_produk_lain: wajib bonus_qty + bonus_produk_id + bonus_satuan_id
+  - diskon_persen: wajib diskon_nilai (0 < nilai <= 100)
+  - diskon_nominal: wajib diskon_nilai (> 0)
 
 update(id: int, data: array): bool
-  Jika is_default=1: reset satuan lain menjadi 0
+
+toggle(id: int): bool
+  UPDATE is_active = NOT is_active
 
 delete(id: int): bool
-  Cek: jangan hapus jika masih ada di detail_transaksi atau detail_pembelian
+  Cek apakah promo sudah pernah dipakai di detail_transaksi
+  Jika sudah: TOLAK, return false
 
-getHargaEfektifPerDasar(satuanId: int): float
-  Return: harga_jual / isi
-  Digunakan untuk perbandingan harga antar satuan
-
-getHematPersen(produkId: int, satuanId: int): float
-  Bandingkan harga efektif satuan ini vs satuan default
-  Return: persentase penghematan (0 jika satuan default)
-  Contoh: (3500 - 3150) / 3500 * 100 = 10.0
+hasBeenUsed(promoId: int): bool
+  Cek COUNT(*) di detail_transaksi WHERE promo_id=?
 ```
 
 ### SupplierService — `app/Services/Inventory/SupplierService.php`
-
 ```
 create(data: array): Supplier
 update(id: int, data: array): bool
 softDelete(id: int): bool
 hardDelete(id: int): bool
 hasPembelian(supplierId: int): bool
-getProdukList(supplierId: int): Collection
-getRiwayatPembelian(supplierId: int): Collection
 ```
 
 ---
@@ -200,33 +180,18 @@ getRiwayatPembelian(supplierId: int): Collection
 ## DOMAIN: PURCHASING
 
 ### PembelianService — `app/Services/Purchasing/PembelianService.php`
-
 ```
 create(supplierId: int, items: array, tanggal: string, userId: int): Pembelian
-  items item: {produk_id, produk_satuan_id, nama_satuan, isi_satuan, qty, harga_beli_satuan}
-  Langkah: calculateTotal() -> generate no_pembelian -> INSERT pembelian+detail -> publishKafka
-
 calculateTotal(items: array): float
-  Sum dari (harga_beli_satuan x qty) per item
-
 updateStatus(id: int, status: string): bool
-
 canReturn(id: int): bool
-  Return true hanya jika status='COMPLETED'
 ```
 
 ### ReturPembelianService — `app/Services/Purchasing/ReturPembelianService.php`
-
 ```
 create(pembelianId: int, itemsRetur: array, alasan: string, userId: int): ReturPembelian
-  Snapshot nama_satuan dan isi_satuan dari detail_pembelian asal
-
 validate(pembelianId: int, itemsRetur: array): bool
-  Cek: pembelian status=COMPLETED
-  Cek: qty_retur <= qty_beli per produk
-
 calculateKredit(itemsRetur: array): float
-  Sum dari (harga_satuan x qty_retur) per item
 ```
 
 ---
@@ -234,63 +199,65 @@ calculateKredit(itemsRetur: array): float
 ## DOMAIN: EVENT-DRIVEN (KAFKA)
 
 ### KafkaProducerService — `app/Services/Kafka/KafkaProducerService.php`
-
 ```
 publishTransactionCreated(transaksi: Transaksi): bool
-  Payload items WAJIB sertakan: {produkId, produkSatuanId, qty, isiSatuan, hargaSatuan, diskonItem}
+  Payload items WAJIB: {produkId, produkSatuanId, qty, isiSatuan,
+                        hargaSatuan, diskonItem, promoId, isBonus}
 
 publishPurchaseCreated(pembelian: Pembelian): bool
-  Payload items WAJIB sertakan: {produkId, produkSatuanId, qty, isiSatuan, hargaBeliSatuan}
 
 publishSaleReturnRequested(retur: ReturPenjualan): bool
-  Payload items: {produkId, qtyRetur, isiSatuan, hargaSatuan}
 
 publishPurchaseReturnRequested(retur: ReturPembelian): bool
-  Payload items: {produkId, qtyRetur, isiSatuan, hargaSatuan}
+
+publishTransactionVoid(void: VoidTransaksi): bool
+  Payload: {
+    eventType: 'transaction.void.requested',
+    voidId: int,
+    transaksiId: int,
+    items: [{produkId, qty, isiSatuan, isBonus}],
+    userId: int,
+    timestamp: string
+  }
+  CATATAN: hanya kirim item dengan isBonus=false ke Consumer
+  Item bonus tidak perlu dikembalikan stoknya
 ```
 
-### transactionConsumer.js — `kafka-service/consumers/transactionConsumer.js`
-
+### voidConsumer.js — `kafka-service/consumers/voidConsumer.js` NEW
 ```javascript
-startTransactionConsumer(): void
-processTransaction(event: object): void
-validateStock(pool, items): {valid: bool, message: string}
-  items item WAJIB punya: {produkId, qty, isiSatuan}
-  Cek: qty_stok >= qty x isiSatuan
-markTransaksiFailed(transaksiId, userId, message): void
+startVoidConsumer(): void
+  Subscribe: topic transaction-events, group pos-void-group
+  Filter: eventType === 'transaction.void.requested'
+
+processVoid(event: object): void
+  Urutan WAJIB dalam satu DB transaction:
+  1. BEGIN
+  2. Untuk setiap item (hanya isBonus=false):
+     UPDATE produk SET qty_stok = qty_stok + (qty x isiSatuan)
+  3. UPDATE transaksi SET status = 'VOIDED'
+  4. UPDATE void_transaksi SET status = 'COMPLETED'
+  5. COMMIT
+  6. wsService.push('user-{userId}', {event:'void.completed', ...})
+  7. wsService.pushAll('stok-global', {event:'stock.updated', updates:[...]})
 ```
 
-### purchaseConsumer.js — `kafka-service/consumers/purchaseConsumer.js`
-
+### transactionConsumer.js — Update
 ```javascript
-startPurchaseConsumer(): void
-processPurchase(event: object): void
-  WAJIB: qty_bertambah = item.qty x item.isiSatuan
-  UPDATE produk SET qty_stok = qty_stok + (qty x isiSatuan)
-  UPDATE produk SET harga_beli = item.hargaBeliSatuan / item.isiSatuan  <- per satuan_dasar
+validateStock(pool, items):
+  Hanya validasi item dengan isBonus=false
+  Item bonus (isBonus=true) tidak perlu validasi stok
+
+processStockDecrease(items):
+  Hanya kurangi stok untuk item dengan isBonus=false
+  Item bonus stok JUGA dikurangi (barang tetap keluar dari gudang)
+  KOREKSI: semua item (termasuk bonus) mengurangi stok
 ```
 
-### returnConsumer.js — `kafka-service/consumers/returnConsumer.js`
-
-```javascript
-startReturnConsumer(): void
-processSaleReturn(event): void
-  TAMBAH stok: qty_stok + (item.qtyRetur x item.isiSatuan)
-processPurchaseReturn(event): void
-  KURANGI stok: qty_stok - (item.qtyRetur x item.isiSatuan)
-```
-
-### wsService.js — `kafka-service/services/wsService.js`
-
+### wsService.js
 ```javascript
 push(channel: string, data: object): void
-  Kirim ke semua subscriber channel tertentu
-
 pushAll(broadcastChannel: string, data: object): void
-  Broadcast ke semua subscriber (dipakai untuk stok-global)
-
 setChannels(channelsMap: Map): void
-  Inisialisasi referensi ke channels Map dari wsServer
 ```
 
 ---
@@ -298,22 +265,23 @@ setChannels(channelsMap: Map): void
 ## DOMAIN: REPORTING
 
 ### LaporanService — `app/Services/Reporting/LaporanService.php`
-
 ```
 generateLaporanPenjualan(dari: string, sampai: string): array
-  Query: transaksi JOIN detail_transaksi JOIN produk
-  Filter: status='COMPLETED', tanggal BETWEEN
-  Tampilkan satuan yang digunakan per baris: nama_satuan, isi_satuan
+  Include: breakdown item bonus dari promo
 
 generateLaporanStok(kategoriId: ?int): array
-  Return per produk: {nama, satuan_dasar, qty_stok, stok_minimum, is_rendah,
-                      satuan_tersedia: [{nama, stok_dalam_satuan}]}
 
 generateLaporanPembelian(dari: string, sampai: string): array
 
+generateLaporanVoid(dari: string, sampai: string): array
+  Return: list void_transaksi dengan detail transaksi asal
+  Include: alasan, kasir, total nilai yang di-void
+
+generateLaporanPromo(dari: string, sampai: string): array
+  Return per promo: berapa kali diterapkan, total item bonus,
+  total nilai diskon yang diberikan
+
 getMetrikBisnis(dari: string, sampai: string): array
-  Return: {omzet, profit_kotor, perputaran_stok}
-  profit_kotor: harga_jual per satuan - (harga_beli_dasar x isi_satuan)
 
 exportPDF(laporan: array): BinaryFileResponse
 exportExcel(laporan: array): BinaryFileResponse
@@ -323,69 +291,48 @@ exportExcel(laporan: array): BinaryFileResponse
 
 ## MODEL ELOQUENT
 
-### Model: `ProdukSatuan` — `app/Models/ProdukSatuan.php`
-
+### Model: `VoidTransaksi` — `app/Models/VoidTransaksi.php`
 ```php
-$fillable = [
-  'produk_id', 'nama_satuan', 'isi',
-  'harga_beli', 'harga_jual', 'is_default', 'barcode'
-]
-
-$casts = [
-  'isi'        => 'integer',
-  'harga_beli' => 'decimal:2',
-  'harga_jual' => 'decimal:2',
-  'is_default' => 'boolean',
-]
+$fillable = ['transaksi_id', 'transaksi_baru_id', 'user_id',
+             'alasan', 'keterangan', 'status', 'batas_waktu']
 
 // Relasi
-produk(): BelongsTo     -> Produk
-detailTransaksi(): HasMany -> DetailTransaksi
-
-// Accessor (computed, tidak disimpan di DB)
-getHargaEfektifPerDasarAttribute(): float
-  return $this->harga_jual / $this->isi
-
-getStokDalamSatuanAttribute(): int
-  return (int) floor($this->produk->qty_stok / $this->isi)
+transaksi(): BelongsTo      -> Transaksi (transaksi asal)
+transaksi_baru(): BelongsTo -> Transaksi (transaksi koreksi, nullable)
+user(): BelongsTo           -> User (kasir yang void)
 ```
 
-### Model: `Produk` — `app/Models/Produk.php`
-
+### Model: `ProdukPromo` — `app/Models/ProdukPromo.php`
 ```php
-// PERUBAHAN dari v1:
-// - Hapus: harga_jual dari fillable
-// - Hapus: satuan dari fillable dan casts
-// - Tambah: satuan_dasar, harga_beli_dasar
+$fillable = ['produk_id', 'produk_satuan_id', 'nama_promo',
+             'tipe_promo', 'min_qty', 'bonus_qty',
+             'bonus_produk_id', 'bonus_satuan_id',
+             'diskon_nilai', 'keterangan', 'is_active',
+             'berlaku_dari', 'berlaku_sampai']
 
-$fillable = [
-  'kategori_id', 'kode_produk', 'nama_produk', 'deskripsi',
-  'harga_beli_dasar', 'qty_stok', 'stok_minimum', 'satuan_dasar', 'status'
-]
+$casts = ['is_active' => 'boolean', 'min_qty' => 'integer',
+          'bonus_qty' => 'integer', 'diskon_nilai' => 'decimal:2']
 
-// Relasi BARU
-satuanList(): HasMany    -> ProdukSatuan (urut: is_default DESC, isi ASC)
-satuanDefault(): HasOne  -> ProdukSatuan WHERE is_default=1
+// Relasi
+produk(): BelongsTo         -> Produk (produk yang promo)
+satuanSyarat(): BelongsTo   -> ProdukSatuan (satuan syarat beli)
+bonusProduk(): BelongsTo    -> Produk (produk bonus, nullable)
+bonusSatuan(): BelongsTo    -> ProdukSatuan (satuan bonus, nullable)
+
+// Scope
+scopeAktif($query)          -> filter promo yang berlaku hari ini
 ```
 
-### KategoriProdukService — `app/Services/Inventory/KategoriProdukService.php`
-
+### Model: `Transaksi` — Update
+```php
+// Tambah nilai VOIDED pada cast status
+// Tambah relasi baru:
+voidTransaksi(): HasOne -> VoidTransaksi
 ```
-getAll(): Collection
-  Return semua kategori aktif, urut nama_kategori ASC
-  Digunakan untuk dropdown di form produk
 
-create(data: array): KategoriProduk
-  data: {nama_kategori, deskripsi?}
-  Validasi: nama_kategori harus UNIQUE
-
-update(id: int, data: array): bool
-
-delete(id: int): bool
-  Cek COUNT(*) di produk WHERE kategori_id=? dulu
-  Jika masih ada produk (aktif maupun nonaktif): tolak, return false
-  Jika tidak ada: DELETE
-
-hasProduk(id: int): bool
-  Cek apakah kategori masih digunakan oleh produk manapun
+### Model: `DetailTransaksi` — Update
+```php
+// Tambah ke fillable: promo_id, is_bonus
+// Tambah relasi:
+promo(): BelongsTo -> ProdukPromo (nullable)
 ```

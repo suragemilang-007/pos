@@ -41,4 +41,9 @@ return [
         'producer_url' => env('KAFKA_PRODUCER_URL', 'http://kafka-service:3000'),
     ],
 
+    // Void Transaksi — batas waktu dalam menit sejak transaksi selesai
+    // Dipakai VoidTransaksiService::checkVoidEligibility() dan getSisaWaktuVoid()
+    // Akses: config('services.void_time_limit')
+    'void_time_limit' => (int) env('VOID_TIME_LIMIT_MINUTES', 30),
+
 ];

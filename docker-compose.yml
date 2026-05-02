@@ -50,6 +50,9 @@ services:
       # Kafka Service (Node.js HTTP endpoint)
       KAFKA_PRODUCER_URL: http://kafka-service:3000
 
+      # Batas waktu void transaksi dalam menit (VoidTransaksiService::checkVoidEligibility)
+      VOID_TIME_LIMIT_MINUTES: 30
+
       # WebSocket (untuk referensi di frontend jika dibutuhkan)
       WEBSOCKET_URL: ws://localhost/ws
 

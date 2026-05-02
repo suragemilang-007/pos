@@ -2,10 +2,12 @@
 
 namespace App\Services\Kafka;
 
+use App\Models\DetailTransaksi;
 use App\Models\Pembelian;
 use App\Models\ReturPembelian;
 use App\Models\ReturPenjualan;
 use App\Models\Transaksi;
+use App\Models\VoidTransaksi;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -168,6 +170,54 @@ class KafkaProducerService
         ];
 
         return $this->publish($payload, "purchase.return.requested returId={$retur->id}");
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // VOID TRANSAKSI
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Publish event void ke Kafka.
+     *
+     * KRITIS — hanya item is_bonus=false yang dimasukkan ke payload:
+     * - Item bonus sudah keluar secara fisik dari gudang saat transaksi berlangsung
+     * - Item bonus TIDAK tercatat sebagai penjualan berbayar (harga_satuan=0)
+     * - Jika stok item bonus dikembalikan → stok double-count karena
+     *   pengurangan stok saat transaksi asli sudah mengurangi stok bonus juga
+     *
+     * Query langsung ke detail_transaksi WHERE is_bonus=0 (lebih efisien dari
+     * load-all-then-filter di PHP, apalagi transaksi bisa punya banyak item).
+     *
+     * Consumer (voidConsumer.js) prosesnya:
+     *   1. Untuk setiap item payload: qty_stok += qty × isiSatuan
+     *   2. UPDATE transaksi SET status='VOIDED'
+     *   3. UPDATE void_transaksi SET status='COMPLETED'
+     *   4. Push WebSocket void.completed + stock.updated
+     */
+    public function publishTransactionVoid(VoidTransaksi $void): bool
+    {
+        // Query langsung WHERE is_bonus=0 — filter di DB bukan di PHP
+        $items = DetailTransaksi::where('transaksi_id', $void->transaksi_id)
+            ->where('is_bonus', 0)
+            ->get()
+            ->map(fn ($d) => [
+                'produkId'  => $d->produk_id,
+                'qty'       => (int) $d->qty,
+                'isiSatuan' => (int) $d->isi_satuan,  // WAJIB — Consumer: stok_kembali = qty × isiSatuan
+            ])
+            ->values()
+            ->all();
+
+        $payload = [
+            'eventType'   => 'transaction.void.requested',
+            'voidId'      => $void->id,
+            'transaksiId' => $void->transaksi_id,
+            'items'       => $items,
+            'userId'      => $void->user_id,
+            'timestamp'   => now()->toIso8601String(),
+        ];
+
+        return $this->publish($payload, "transaction.void.requested voidId={$void->id}");
     }
 
     // ─────────────────────────────────────────────────────────────────────────
