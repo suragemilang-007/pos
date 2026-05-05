@@ -11,10 +11,10 @@
 <div class="space-y-5">
 
     {{-- ── Tab Navigation ──────────────────────────────────────────────────── --}}
-    <div class="bg-gray-100 dark:bg-gray-700/50 p-1 rounded-xl flex gap-1">
+    <div class="bg-gray-100 dark:bg-gray-700/50 p-1 rounded-xl flex gap-1 flex-wrap sm:flex-nowrap">
         @foreach([['penjualan','Penjualan'],['stok','Stok'],['pembelian','Pembelian']] as [$key,$label])
         <button id="tab-btn-{{ $key }}" onclick="switchTab('{{ $key }}')"
-            class="tab-btn flex-1 px-4 py-2 text-sm font-medium rounded-lg transition-all focus:outline-none">
+            class="tab-btn flex-1 px-3 py-2 text-sm font-medium rounded-lg transition-all focus:outline-none whitespace-nowrap">
             {{ $label }}
         </button>
         @endforeach
@@ -317,6 +317,8 @@
         </div>
     </div>
 
+
+
 </div>
 @endsection
 
@@ -326,10 +328,8 @@
 let activeTab    = 'penjualan';
 let chartOmzet   = null;
 let chartMetode  = null;
-let lastJualDari = '';
-let lastJualSampai = '';
-let lastBeliDari = '';
-let lastBeliSampai = '';
+let lastJualDari = ''; let lastJualSampai = '';
+let lastBeliDari = ''; let lastBeliSampai = '';
 
 // ── Tab ───────────────────────────────────────────────────────────────────────
 function switchTab(tab) {
@@ -341,8 +341,8 @@ function switchTab(tab) {
 
         panel.classList.toggle('hidden', !isActive);
         btn.className = isActive
-            ? 'tab-btn flex-1 px-4 py-2 text-sm font-semibold rounded-lg bg-white dark:bg-gray-800 text-indigo-600 dark:text-indigo-400 shadow-sm transition-all focus:outline-none'
-            : 'tab-btn flex-1 px-4 py-2 text-sm font-medium rounded-lg text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-all focus:outline-none';
+            ? 'tab-btn flex-1 px-3 py-2 text-sm font-semibold rounded-lg bg-white dark:bg-gray-800 text-indigo-600 dark:text-indigo-400 shadow-sm transition-all focus:outline-none whitespace-nowrap'
+            : 'tab-btn flex-1 px-3 py-2 text-sm font-medium rounded-lg text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-all focus:outline-none whitespace-nowrap';
     });
     sessionStorage.setItem('laporan-tab', tab);
 }
@@ -352,8 +352,12 @@ function defaultDates() {
     const today    = new Date().toISOString().slice(0, 10);
     const firstDay = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10);
 
-    ['jual-dari','beli-dari'].forEach(id => { document.getElementById(id).value = firstDay; });
-    ['jual-sampai','beli-sampai'].forEach(id => { document.getElementById(id).value = today; });
+    ['jual-dari','beli-dari'].forEach(id => {
+        document.getElementById(id).value = firstDay;
+    });
+    ['jual-sampai','beli-sampai'].forEach(id => {
+        document.getElementById(id).value = today;
+    });
 }
 
 // ── Load dropdown kategori (untuk tab stok) ───────────────────────────────────
@@ -701,11 +705,11 @@ async function exportLaporan(jenis, format) {
     let params = new URLSearchParams({ format });
 
     if (jenis === 'penjualan') {
-        if (!lastJualDari) { showToast('warning', 'Generate dahulu', 'Klik Generate sebelum export'); return; }
-        params.set('dari', lastJualDari); params.set('sampai', lastJualSampai);
+        if (!lastJualDari)  { showToast('warning', 'Generate dahulu', 'Klik Generate sebelum export'); return; }
+        params.set('dari', lastJualDari);  params.set('sampai', lastJualSampai);
     } else if (jenis === 'pembelian') {
-        if (!lastBeliDari) { showToast('warning', 'Generate dahulu', 'Klik Generate sebelum export'); return; }
-        params.set('dari', lastBeliDari); params.set('sampai', lastBeliSampai);
+        if (!lastBeliDari)  { showToast('warning', 'Generate dahulu', 'Klik Generate sebelum export'); return; }
+        params.set('dari', lastBeliDari);  params.set('sampai', lastBeliSampai);
     } else if (jenis === 'stok') {
         const kat = document.getElementById('stok-kategori').value;
         if (kat) params.set('kategori_id', kat);

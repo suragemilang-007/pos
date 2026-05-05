@@ -239,6 +239,11 @@ function handleWsEvent(data) {
                 'Kredit: Rp ' + formatRupiah(data.nilaiKredit || 0));
             document.dispatchEvent(new CustomEvent('ws:return-purchase-completed', { detail: data }));
             break;
+        case 'void.completed':
+            showToast('warning', 'Transaksi Di-void',
+                'No. ' + (data.transaksiId || '') + ' berhasil dibatalkan. Stok dikembalikan.');
+            document.dispatchEvent(new CustomEvent('ws:void-completed', { detail: data }));
+            break;
         case 'stock.updated':
             // Emit custom event agar halaman stok update UI tanpa reload penuh
             document.dispatchEvent(new CustomEvent('stok-updated', { detail: data.updates || [] }));

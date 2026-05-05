@@ -62,7 +62,7 @@
             </div>
 
             {{-- Harga & Subtotal --}}
-            <div class="flex items-center justify-between py-3 border-t border-gray-100 dark:border-gray-700 mb-4">
+            <div class="flex items-center justify-between py-3 border-t border-gray-100 dark:border-gray-700 mb-3">
                 <div>
                     <p class="text-xs text-gray-500 dark:text-gray-400">Harga per satuan</p>
                     <p id="info-harga" class="text-lg font-bold font-mono text-gray-900 dark:text-gray-100">—</p>
@@ -72,6 +72,7 @@
                     <p id="info-subtotal" class="text-lg font-bold font-mono text-indigo-600 dark:text-indigo-400">—</p>
                 </div>
             </div>
+
 
             {{-- Tombol tambah ke keranjang --}}
             <button id="btn-tambah" onclick="tambahKeKeranjang()"
@@ -105,6 +106,22 @@
                 <span id="customer-nama" class="text-sm font-medium text-indigo-600 dark:text-indigo-400"></span>
                 <button onclick="clearCustomer()" class="text-xs text-gray-400 hover:text-red-500 transition-colors">× Hapus</button>
             </div>
+        </div>
+
+        {{-- ── Void quick link ─────────────────────────────────────────────── --}}
+        {{-- Akses cepat ke halaman void tanpa navigasi manual                 --}}
+        <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm px-4 py-2.5 flex items-center justify-between">
+            <p class="text-xs text-gray-500 dark:text-gray-400">
+                Perlu batalkan transaksi sebelumnya?
+            </p>
+            <a href="/kasir/void-transaksi"
+                class="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-200 transition-colors whitespace-nowrap">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
+                </svg>
+                Void Transaksi
+            </a>
         </div>
 
     </div>{{-- /panel kiri --}}
@@ -363,6 +380,7 @@ function tampilkanProduk(p) {
     onSatuanChange();
 }
 
+
 function onSatuanChange() {
     if (!currentProduk) return;
     const opt = document.getElementById('select-satuan').selectedOptions[0];
@@ -408,8 +426,8 @@ function onSatuanChange() {
 function onQtyChange() {
     const opt = document.getElementById('select-satuan').selectedOptions[0];
     if (!opt) return;
-    const harga    = parseFloat(opt.dataset.harga);
-    const qty      = parseInt(document.getElementById('input-qty').value) || 1;
+    const harga = parseFloat(opt.dataset.harga);
+    const qty   = parseInt(document.getElementById('input-qty').value) || 1;
     document.getElementById('info-subtotal').textContent = 'Rp ' + fmt(harga * qty);
 }
 
@@ -417,17 +435,18 @@ function onQtyChange() {
 function tambahKeKeranjang() {
     if (!currentProduk) return;
 
-    const opt   = document.getElementById('select-satuan').selectedOptions[0];
-    const qty   = parseInt(document.getElementById('input-qty').value) || 1;
-    const harga = parseFloat(opt.dataset.harga);
-    const stok  = parseInt(opt.dataset.stok);
+    const opt      = document.getElementById('select-satuan').selectedOptions[0];
+    const qty      = parseInt(document.getElementById('input-qty').value) || 1;
+    const harga    = parseFloat(opt.dataset.harga);
+    const stok     = parseInt(opt.dataset.stok);
+    const satuanId = parseInt(opt.value);
 
     if (stok === 0) return;
     if (qty > stok) { setErrScan(`Stok ${opt.dataset.nama} hanya ${stok} unit`); return; }
 
     // Jika produk + satuan sudah ada di keranjang → tambah qty saja
     const existing = cart.find(c =>
-        c.produk_id === currentProduk.id && c.produk_satuan_id === parseInt(opt.value)
+        c.produk_id === currentProduk.id && c.produk_satuan_id === satuanId
     );
 
     if (existing) {
@@ -435,7 +454,7 @@ function tambahKeKeranjang() {
     } else {
         cart.push({
             produk_id:          currentProduk.id,
-            produk_satuan_id:   parseInt(opt.value),
+            produk_satuan_id:   satuanId,
             kode_produk:        currentProduk.kode_produk,
             nama_produk:        currentProduk.nama_produk,
             satuan_dasar:       currentProduk.satuan_dasar,
@@ -454,6 +473,7 @@ function tambahKeKeranjang() {
     setErrScan('');
 }
 
+
 function renderKeranjang() {
     const totalItems = cart.reduce((s, c) => s + c.qty, 0);
     const totalHarga = cart.reduce((s, c) => s + c.qty * c.harga_satuan, 0);
@@ -463,7 +483,7 @@ function renderKeranjang() {
     const empty = document.getElementById('cart-empty');
     const items = document.getElementById('cart-items');
 
-    if (cart.length === 0) {
+    if (!cart.length) {
         empty.classList.remove('hidden');
         items.classList.add('hidden');
         document.getElementById('btn-proses').disabled = true;
@@ -474,8 +494,8 @@ function renderKeranjang() {
         items.innerHTML = cart.map((c, i) => `
             <div class="flex items-start gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/30">
                 <div class="flex-1 min-w-0">
-                    <p class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">${c.nama_produk}</p>
-                    <p class="text-xs text-gray-400 dark:text-gray-500 font-mono">${c.kode_produk} · ${c.nama_satuan}</p>
+                    <p class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">${esc(c.nama_produk)}</p>
+                    <p class="text-xs text-gray-400 dark:text-gray-500 font-mono">${esc(c.kode_produk)} · ${esc(c.nama_satuan)}</p>
                     <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Rp ${fmt(c.harga_satuan)} × ${c.qty}</p>
                 </div>
                 <div class="text-right shrink-0">
@@ -521,8 +541,8 @@ function resetKeranjang() {
 }
 
 function hitungKembalian() {
-    const total  = cart.reduce((s, c) => s + c.qty * c.harga_satuan, 0);
-    const bayar  = parseFloat(document.getElementById('input-bayar').value) || 0;
+    const total = cart.reduce((s, c) => s + c.qty * c.harga_satuan, 0);
+    const bayar = parseFloat(document.getElementById('input-bayar').value) || 0;
     document.getElementById('lbl-kembalian').textContent = 'Rp ' + fmt(Math.max(0, bayar - total));
 }
 
@@ -706,7 +726,13 @@ function transaksiBerikutnya() {
 }
 
 // ── Utilitas ──────────────────────────────────────────────────────────────────
-function fmt(n) { return new Intl.NumberFormat('id-ID').format(n); }
+function fmt(n) { return new Intl.NumberFormat('id-ID').format(n ?? 0); }
+
+function esc(s) {
+    if (s == null) return '';
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
 
 function setErrScan(msg) {
     const el = document.getElementById('err-scan');

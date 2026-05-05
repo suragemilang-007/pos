@@ -25,10 +25,11 @@ const HTTP_PORT = parseInt(process.env.PRODUCER_HTTP_PORT || '3000');
  * transaksi bisa punya lebih banyak partition jika throughput kasir tinggi.
  */
 const TOPIC_MAP = {
-    'transaction.created':        TOPICS.TRANSACTION,
-    'purchase.created':           TOPICS.INVENTORY,
-    'sale.return.requested':      TOPICS.INVENTORY,
-    'purchase.return.requested':  TOPICS.INVENTORY,
+    'transaction.created':          TOPICS.TRANSACTION,
+    'transaction.void.requested':   TOPICS.TRANSACTION,  // voidConsumer.js — group pos-void-group
+    'purchase.created':             TOPICS.INVENTORY,
+    'sale.return.requested':        TOPICS.INVENTORY,
+    'purchase.return.requested':    TOPICS.INVENTORY,
 };
 
 /**
