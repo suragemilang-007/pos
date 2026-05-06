@@ -1,5 +1,5 @@
 # SEQUENCE_FLOWS.md — Kontrak API & Urutan Pesan
-> **Versi 3.0** — Tambah: SD-17 Void + SD-18 Promo. Update: SD-03, SD-07
+> **Versi 4.0** — Update: SD-09 (Cash/Kredit) + Tambah SD-19, SD-20
 
 ## Konvensi
 - `202` → async via Kafka | `200` → sinkron selesai | `201` → data dibuat
@@ -11,146 +11,110 @@
 POST /api/auth/login
 Body: { username, password }
 ← 200: { data: { token, role: {id, nama_role}, user: {id, nama, username} } }
-← 422: { message, errors }
-← 401: { message: "Username atau password salah" }
+← 422 | 401
 ```
 
 ## SD-02: Logout
 ```
 POST /api/auth/logout
-Header: Authorization: Bearer {token}
-← 200: { message: "Logout berhasil" }
-← 401: { message: "Token tidak valid" }
+← 200 | 401
 ```
 
-## SD-03: Input Transaksi Penjualan ⚠️ Update v3
+## SD-03: Input Transaksi Penjualan
 ```
 POST /api/kasir/transaksi
-Body: {
-  items: [
-    {
-      produk_id: int,
-      produk_satuan_id: int,
-      nama_satuan: string,
-      isi_satuan: int,
-      qty: int,
-      harga_satuan: decimal,  <- 0 jika item bonus
-      diskon_item: decimal,
-      promo_id: int|null,     <- ID promo yang diterapkan (untuk audit)
-      is_bonus: bool          <- true jika item gratis dari promo
-    }
-  ],
-  customer_id: int|null,
-  subtotal, diskon, total, bayar, kembalian,
-  metode_bayar: 'tunai'|'transfer'|'qris'
-}
+Body: { items: [{produk_id, produk_satuan_id, nama_satuan,
+                 isi_satuan, qty, harga_satuan, diskon_item}],
+        customer_id?, subtotal, diskon, total, bayar, kembalian,
+        metode_bayar }
 ← 202: { id_transaksi, no_transaksi, status: "PENDING" }
-← 422: { message, errors }
-
-[async via Kafka → WebSocket]
-← WS PUSH: { event: "transaction.completed"|"transaction.failed",
-              transaksiId, status, message }
-← WS PUSH: { event: "stock.updated", updates: [{produkId, stokBaru}] }
+[async WS] transaction.completed | transaction.failed | stock.updated
 ```
-
-> **Catatan item bonus:** Item dengan `is_bonus=true` memiliki `harga_satuan=0`
-> dan `promo_id` terisi. Consumer TETAP mengurangi stok untuk item bonus
-> (barang fisik tetap keluar dari gudang).
 
 ## SD-04: Cetak Struk
 ```
 GET /api/kasir/transaksi/{id}/struk
-← 200: { data: { no_transaksi, tanggal, kasir, customer?,
-                 items: [{nama_produk, nama_satuan, qty, harga_satuan,
-                          subtotal, is_bonus, nama_promo?}],
-                 subtotal, diskon, total, bayar, kembalian, metode_bayar } }
+← 200: { data: { no_transaksi, items[], subtotal, diskon,
+                 total, bayar, kembalian, metode_bayar } }
 ← 403 | 404
 ```
 
 ## SD-05: Retur Penjualan
 ```
 GET /api/kasir/transaksi/{id}
-← 400: { message: "Transaksi VOIDED tidak dapat diretur" }  <- tambahan v3
-
 POST /api/kasir/retur-penjualan
 Body: { transaksi_id, items_retur: [{produk_id, nama_satuan,
         isi_satuan, qty_retur, harga_satuan}], alasan }
 ← 202: { id_retur, no_retur, status: "PENDING" }
-
-[async] WS PUSH: { event: "return.sale.completed", returId, nilaiRefund }
+[async WS] return.sale.completed | stock.updated
 ```
-
-> Item dengan `is_bonus=true` tidak perlu diretur
-> (tidak ada nilai refund untuk item gratis).
 
 ## SD-06: Lihat Stok Real-Time
 ```
 GET /api/kasir/stok?kategori_id=&nama=&page=1&limit=20
-← 200: { data: { stok: [{id, kode_produk, nama_produk, kategori,
+← 200: { data: { stok: [{id, kode_produk, nama_produk,
                           satuan_dasar, qty_stok, stok_minimum,
-                          is_rendah, satuan_tersedia: [...]}],
+                          is_rendah, satuan_tersedia[]}],
                  pagination } }
-
-WS CONNECT → ws://localhost/ws (subscribe: 'stok-global')
-WS PUSH: { event: "stock.updated", updates: [{produkId, stokBaru}] }
+WS CONNECT + PUSH stock.updated
 ```
 
-## SD-07: Cek Stok ⚠️ Update v3 (tambah promo_aktif)
+## SD-07: Cek Stok
 ```
 GET /api/kasir/produk/{kode}/stok
-← 200: {
-  data: {
-    id, kode_produk, nama_produk,
-    satuan_dasar, qty_stok, stok_minimum,
-    satuan_tersedia: [
-      { id, nama_satuan, isi, harga_jual,
-        stok_dalam_satuan, hemat_persen, is_default }
-    ],
-    promo_aktif: [           <- BARU v3
-      {
-        id: int,
-        nama_promo: string,  <- "Beli 5 Gratis 1"
-        tipe_promo: string,
-        min_qty: int,
-        produk_satuan_id: int,
-        bonus_qty: int|null,
-        bonus_produk: {id, nama_produk, satuan_tersedia}|null,
-        bonus_satuan_id: int|null,
-        diskon_nilai: decimal|null,
-        keterangan: string|null
-      }
-    ]
-  }
-}
-← 404: { message: "Produk tidak ditemukan" }
+← 200: { data: { id, nama_produk, satuan_dasar, qty_stok,
+                 stok_minimum, satuan_tersedia[] } }
+← 404
 ```
 
 ## SD-08: CRUD Produk
 ```
-GET  /api/gudang/produk?page=&limit=&kategori_id=&nama=&status=
-POST /api/gudang/produk
-Body: { kode_produk, nama_produk, kategori_id, deskripsi?,
-        harga_beli_dasar, qty_stok, stok_minimum, satuan_dasar,
-        satuan_list: [{nama_satuan, isi, harga_beli, harga_jual,
-                       is_default, barcode?}] }
-GET  /api/gudang/produk/{id}
-PUT  /api/gudang/produk/{id}
-DEL  /api/gudang/produk/{id}
-
-GET    /api/gudang/produk/{id}/satuan
-POST   /api/gudang/produk/{id}/satuan
-PUT    /api/gudang/produk/{id}/satuan/{satuan_id}
-DELETE /api/gudang/produk/{id}/satuan/{satuan_id}
+GET/POST/PUT/DELETE /api/gudang/produk
+GET/POST/PUT/DELETE /api/gudang/produk/{id}/satuan/{satuan_id?}
 ```
 
-## SD-09: Pembelian/Restock
+## SD-09: Pembelian / Restock ⚠️ Update v4
 ```
 POST /api/gudang/pembelian
-Body: { supplier_id, tanggal_pembelian,
-        items: [{produk_id, produk_satuan_id, nama_satuan,
-                 isi_satuan, qty, harga_beli_satuan}] }
-← 202: { id_pembelian, no_pembelian, status: "PENDING" }
-WS PUSH: { event: "purchase.completed", pembelianId, stokUpdates }
+Body: {
+  supplier_id: int,
+  tanggal_pembelian: date,
+  tipe_pembayaran: 'cash' | 'kredit',
+  jumlah_dp: decimal,              <- 0 jika full kredit atau cash
+  tanggal_jatuh_tempo: date|null,  <- WAJIB jika kredit
+  catatan_pembayaran: string|null,
+  items: [{
+    produk_id, produk_satuan_id,
+    nama_satuan, isi_satuan,
+    qty, harga_beli_satuan
+  }]
+}
+← 202: {
+  id_pembelian, no_pembelian,
+  status: "PENDING",
+  tipe_pembayaran,
+  sisa_hutang,
+  tanggal_jatuh_tempo
+}
+← 422: { errors: { tanggal_jatuh_tempo: ["Wajib diisi untuk pembelian kredit"] } }
+
+[async via Kafka Consumer → MySQL]:
+  - UPDATE stok semua item (qty x isi_satuan)
+  - UPDATE pembelian status='COMPLETED'
+  - INSERT pembayaran_pembelian (jika cash atau kredit+dp)
+
+[async WS]:
+{
+  event: 'purchase.completed',
+  pembelianId,
+  tipe_pembayaran,
+  sisa_hutang,        <- 0 jika cash
+  tanggal_jatuh_tempo <- null jika cash
+}
++ { event: 'stock.updated', updates: [...] }
+
+GET /api/gudang/pembelian         <- daftar PO
+GET /api/gudang/pembelian/{id}    <- detail PO + riwayat pembayaran
 ```
 
 ## SD-10: Retur Pembelian
@@ -160,171 +124,210 @@ POST /api/gudang/retur-pembelian
 Body: { pembelian_id, items_retur: [{produk_id, nama_satuan,
         isi_satuan, qty_retur, harga_satuan}], alasan }
 ← 202: { id_retur, no_retur, status: "PENDING" }
-WS PUSH: { event: "return.purchase.completed", returId, nilaiKredit }
+[async WS] return.purchase.completed | stock.updated
 ```
 
 ## SD-11: CRUD Customer
 ```
-GET    /api/kasir/customer?page=&search=&status=
-POST   /api/kasir/customer
-Body: { nama, no_telp, alamat?, tipe_customer }
-GET    /api/kasir/customer/{id}
-PUT    /api/kasir/customer/{id}
-DELETE /api/kasir/customer/{id}
+GET/POST/PUT/DELETE /api/kasir/customer
+GET /api/kasir/customer?search=
 ```
 
 ## SD-12: Riwayat Belanja Customer
 ```
-GET /api/kasir/customer?search={keyword}
 GET /api/kasir/customer/{id}/riwayat?page=1&limit=20
-← 200: { data: { riwayat: [...], total_belanja, frekuensi, total_page } }
 GET /api/kasir/transaksi/{id}
 ```
 
 ## SD-13: CRUD Supplier
 ```
-GET    /api/gudang/supplier?page=&search=
-POST   /api/gudang/supplier
-Body: { nama_supplier, kontak_person?, no_telp, alamat? }
-GET    /api/gudang/supplier/{id}
-PUT    /api/gudang/supplier/{id}
-DELETE /api/gudang/supplier/{id}
+GET/POST/PUT/DELETE /api/gudang/supplier
 ```
 
 ## SD-14: Laporan
 ```
-GET /api/owner/laporan/{jenis}?dari=&sampai=&kategori_id=
-jenis: penjualan | stok | pembelian | void | promo   <- void & promo baru
+GET /api/owner/laporan/{jenis}?dari=&sampai=&filter=
+jenis: penjualan | stok | pembelian | void | hutang | penyesuaian_stok
 GET /api/owner/laporan/{jenis}/export?format=pdf|excel
 ```
 
 ## SD-15: Manajemen User
 ```
-GET  /api/owner/user
-POST /api/owner/user
-Body: { nama, username, password, role_id }
-PUT  /api/owner/user/{id}
+GET/POST /api/owner/user
+PUT /api/owner/user/{id}
 PATCH /api/owner/user/{id}/reset-password
-Body: { password_baru }
 PATCH /api/owner/user/{id}/nonaktifkan
 ```
 
 ## SD-16: Manajemen Kategori
 ```
-GET    /api/kategori                     <- publik (kasir+gudang+owner)
-GET    /api/gudang/kategori              <- dengan jumlah_produk (gudang+owner)
-POST   /api/gudang/kategori
-Body: { nama_kategori, deskripsi? }
-PUT    /api/gudang/kategori/{id}
-DELETE /api/gudang/kategori/{id}
-← 422 jika masih ada produk yang menggunakan kategori ini
+GET /api/kategori                  <- publik (dropdown)
+GET/POST/PUT/DELETE /api/gudang/kategori/{id?}
 ```
 
-## SD-17: Void Transaksi NEW
+## SD-17: Void Transaksi
 ```
-[Cek kelayakan void]
 GET /api/kasir/transaksi/{id}
-← 200: { data: { ...transaksi, can_void: bool,
-                 sisa_waktu_void: int,     <- sisa detik (0 jika expired)
-                 void_reason: string|null  <- alasan tidak bisa void } }
+← 200: { data: { ...transaksi, can_void, sisa_waktu_void, void_reason } }
 
-[Kondisi dapat di-void: can_void=true]
-  - status = 'COMPLETED'
-  - sisa_waktu_void > 0
-  - Belum ada void sebelumnya
-  - Belum ada retur
-
-[Proses void]
 POST /api/kasir/transaksi/{id}/void
+Body: { alasan, keterangan? }
+← 202: { id_void, status: "PENDING" }
+[async WS] void.completed | stock.updated
+```
+
+## SD-18: Manajemen Promo Produk
+```
+GET/POST/PUT /api/gudang/promo/{id?}
+PATCH /api/gudang/promo/{id}/toggle
+DELETE /api/gudang/promo/{id}
+```
+
+## SD-19: Pembayaran Hutang Pembelian NEW
+```
+[Muat daftar hutang]
+GET /api/gudang/hutang
+  Query params: supplier_id?, status_pembayaran?, page?
+← 200: {
+  data: [
+    {
+      id, no_pembelian,
+      supplier: { id, nama_supplier },
+      total,
+      jumlah_dp,
+      sisa_hutang,
+      tanggal_jatuh_tempo,
+      status_pembayaran,
+      hari_tersisa: int,   <- negatif jika sudah lewat jatuh tempo
+      total_dibayar: decimal
+    }
+  ],
+  ringkasan: {
+    total_hutang_semua: decimal,
+    hutang_jatuh_tempo_3hari: int  <- jumlah PO yang < 3 hari
+  },
+  pagination
+}
+
+[Detail PO + riwayat bayar]
+GET /api/gudang/pembelian/{id}
+← 200: {
+  data: {
+    ...pembelian,
+    items[],
+    riwayat_pembayaran: [
+      { id, jumlah, metode, tanggal_bayar, catatan, nama_user }
+    ],
+    total_dibayar,
+    sisa_hutang
+  }
+}
+
+[Catat pembayaran / cicilan]
+POST /api/gudang/pembelian/{id}/bayar
 Body: {
-  alasan: 'kesalahan_input'|'barang_rusak_saat_transaksi'|
-          'permintaan_pembeli'|'lainnya',
-  keterangan: string|null
+  jumlah: decimal,
+  metode: 'cash'|'transfer'|'cek'|'giro',
+  tanggal_bayar: date,
+  catatan: string|null
 }
-← 202: { id_void, status: "PENDING", message: "Void sedang diproses" }
-← 400: { message: "Alasan spesifik mengapa tidak bisa di-void" }
-← 422: { message, errors }
+← 200: {
+  message: "Pembayaran berhasil dicatat",
+  sisa_hutang_baru: decimal,
+  status_pembayaran_baru: 'lunas'|'sebagian'
+}
+← 422: {
+  message: "Jumlah melebihi sisa hutang",
+  errors: { jumlah: ["Maksimal Rp X"] }
+}
 
-[async via Kafka → WebSocket]
-WS PUSH: {
-  event: "void.completed",
-  voidId: int,
-  transaksiId: int,
-  status: "COMPLETED",
-  message: "Transaksi berhasil dibatalkan. Stok dikembalikan."
-}
-WS PUSH: { event: "stock.updated", updates: [{produkId, stokBaru}] }
+[Tidak ada Kafka — operasi sinkron murni keuangan]
 ```
 
-## SD-18: Manajemen Promo Produk NEW
+## SD-20: Penyesuaian Stok NEW
 ```
-[CRUD Promo]
-GET  /api/gudang/promo?produk_id=&status=&nama=
-POST /api/gudang/promo
+[Muat riwayat penyesuaian]
+GET /api/gudang/penyesuaian-stok?page=1&limit=20&produk_id=&tipe=
+← 200: {
+  data: [
+    {
+      id, produk: {id, nama_produk, kode_produk},
+      tipe, qty_satuan_dasar,
+      keterangan, status,
+      created_at, nama_user
+    }
+  ],
+  pagination
+}
+
+[Cek stok produk sebelum input — reuse endpoint existing]
+GET /api/kasir/produk/{kode}/stok
+← 200: { data: { produk, qty_stok, satuan_tersedia[] } }
+
+[Submit penyesuaian baru]
+POST /api/gudang/penyesuaian-stok
 Body: {
   produk_id: int,
-  produk_satuan_id: int,
-  nama_promo: string,
-  tipe_promo: 'bonus_produk_sama'|'bonus_produk_lain'|
-              'diskon_persen'|'diskon_nominal',
-  min_qty: int,
-  bonus_qty: int|null,
-  bonus_produk_id: int|null,
-  bonus_satuan_id: int|null,
-  diskon_nilai: decimal|null,
-  keterangan: string|null,
-  is_active: bool,
-  berlaku_dari: date|null,
-  berlaku_sampai: date|null
+  tipe: 'barang_rusak'|'barang_hilang'|'barang_expired'|
+        'koreksi_plus'|'koreksi_minus',
+  qty_satuan_dasar: int,  <- selalu positif, arah ditentukan tipe
+  keterangan: string      <- wajib diisi
 }
-← 201: { data: promo }
-← 422: { message, errors }
+← 202: { id_penyesuaian, status: "PENDING" }
+← 422: {
+  errors: {
+    qty_satuan_dasar: ["Qty melebihi stok tersedia (maks: N)"]
+  }
+}
 
-PUT   /api/gudang/promo/{id}
-PATCH /api/gudang/promo/{id}/toggle
-← 200: { data: { id, is_active: bool } }
-DELETE /api/gudang/promo/{id}
-← 422 jika promo sudah pernah digunakan di transaksi
+[async via Kafka Consumer]
+Kafka event: stock.adjustment.requested
 
-[Promo digunakan saat transaksi — tidak ada endpoint terpisah]
-Promo aktif sudah di-load bersama GET /produk/{kode}/stok (SD-07)
-Kalkulasi dilakukan di Frontend (JavaScript)
-promo_id dikirim dalam payload POST /transaksi (SD-03)
+[async WS]
+← WS PUSH: {
+  event: 'adjustment.completed',
+  adjustmentId: int,
+  tipe: string,
+  produkId: int,
+  stokBaru: int,
+  message: 'Stok [nama_produk] diperbarui. Stok baru: N pcs'
+}
+← WS PUSH: { event: 'stock.updated', updates: [{produkId, stokBaru}] }
 ```
 
 ---
 
-## Payload Kafka Events
+## Payload Kafka Events (Semua)
 
 ```javascript
-// transaction.created (update v3 — tambah promoId dan isBonus)
+// transaction.created — tidak berubah dari v3
+// transaction.void.requested — tidak berubah dari v3
+// sale.return.requested — tidak berubah
+// purchase.return.requested — tidak berubah
+
+// purchase.created — update v4 (tambah tipe_pembayaran + jumlah_dp)
 {
-  eventType: "transaction.created",
-  transaksiId: 123,
+  eventType: 'purchase.created',
+  pembelianId: 45,
+  supplierId: 3,
+  tipePembayaran: 'kredit',
+  jumlahDp: 500000,
   items: [
-    { produkId: 1, produkSatuanId: 3, qty: 2,
-      isiSatuan: 96, hargaSatuan: 280000,
-      diskonItem: 0, promoId: null, isBonus: false },
-    { produkId: 1, produkSatuanId: 1, qty: 1,
-      isiSatuan: 1, hargaSatuan: 0,
-      diskonItem: 0, promoId: 5, isBonus: true }  // item gratis
+    { produkId: 1, produkSatuanId: 3, qty: 5,
+      isiSatuan: 6, hargaBeliSatuan: 150000 }
   ],
-  userId: 2, total: 560000, metodeBayar: "tunai",
-  timestamp: "..."
+  userId: 5,
+  timestamp: '...'
 }
 
-// transaction.void.requested (NEW)
+// stock.adjustment.requested — BARU
 {
-  eventType: "transaction.void.requested",
-  voidId: 10,
-  transaksiId: 123,
-  items: [   // hanya item isBonus=false yang perlu dikembalikan stoknya
-    { produkId: 1, qty: 2, isiSatuan: 96 }
-  ],
-  userId: 2,
-  timestamp: "..."
+  eventType: 'stock.adjustment.requested',
+  adjustmentId: 10,
+  produkId: 1,
+  qtySatuanDasar: 12,   <- selalu positif
+  tipe: 'barang_rusak', <- menentukan arah +/-
+  userId: 5,
+  timestamp: '...'
 }
-
-// purchase.created, sale.return.requested,
-// purchase.return.requested — tidak berubah dari v2
 ```

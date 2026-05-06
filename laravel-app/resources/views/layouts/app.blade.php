@@ -244,12 +244,29 @@ function handleWsEvent(data) {
                 'No. ' + (data.transaksiId || '') + ' berhasil dibatalkan. Stok dikembalikan.');
             document.dispatchEvent(new CustomEvent('ws:void-completed', { detail: data }));
             break;
+        case 'adjustment.completed':
+            showToast('success', 'Penyesuaian Stok Selesai',
+                data.message || 'Stok produk telah diperbarui.');
+            document.dispatchEvent(new CustomEvent('ws-event', { detail: data }));
+            break;
+        case 'adjustment.failed':
+            showToast('error', 'Penyesuaian Stok Gagal',
+                data.message || 'Terjadi kesalahan. Silakan hubungi admin.');
+            document.dispatchEvent(new CustomEvent('ws-event', { detail: data }));
+            break;
         case 'stock.updated':
             // Emit custom event agar halaman stok update UI tanpa reload penuh
             document.dispatchEvent(new CustomEvent('stok-updated', { detail: data.updates || [] }));
             break;
     }
 }
+
+// Bridge untuk view yang memanggil window.showToast(msg, type) — signature berbeda
+// dari fungsi utama showToast(type, title, message).
+window.showToast = function(msg, type) {
+    const titleMap = { success: 'Berhasil', error: 'Gagal', info: 'Info', warning: 'Perhatian' };
+    showToast(type || 'info', titleMap[type] || 'Info', msg);
+};
 
 // ── Toast (§10.6G) ────────────────────────────────────────────────────────────
 function showToast(type, title, message) {

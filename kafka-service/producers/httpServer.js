@@ -30,6 +30,7 @@ const TOPIC_MAP = {
     'purchase.created':             TOPICS.INVENTORY,
     'sale.return.requested':        TOPICS.INVENTORY,
     'purchase.return.requested':    TOPICS.INVENTORY,
+    'stock.adjustment.requested':   TOPICS.INVENTORY,    // adjustmentConsumer.js — group pos-adjustment-group
 };
 
 /**

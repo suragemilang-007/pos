@@ -10,7 +10,8 @@
  * 1. TAMBAH qty_stok setiap produk dalam PO (qty × isiSatuan)
  * 2. UPDATE harga_beli_dasar produk ke harga terbaru per satuan_dasar
  * 3. UPDATE status pembelian → COMPLETED
- * 4. Push notifikasi ke admin gudang dan broadcast stok ke semua terminal
+ * 4. INSERT pembayaran_pembelian (cash/dp) jika ada — dalam transaction yang sama
+ * 5. Push notifikasi ke admin gudang dan broadcast stok ke semua terminal
  */
 
 const { TOPICS } = require('../config/kafka');
@@ -28,12 +29,18 @@ const { TOPICS } = require('../config/kafka');
  * agar laporan profit margin selalu menggunakan harga beli terkini.
  * Formula: harga_beli_dasar = hargaBeliSatuan / isiSatuan
  *
+ * Mengapa pembayaran diproses di Consumer (bukan di Laravel)?
+ * INSERT pembayaran_pembelian harus atomic bersama UPDATE stok dan COMPLETED —
+ * jika Laravel langsung INSERT tapi Consumer gagal update stok, data inkonsisten:
+ * hutang tercatat lunas tapi stok belum bertambah.
+ * Dengan satu DB transaction di Consumer, keduanya berhasil atau keduanya rollback.
+ *
  * @param {object}                          event
  * @param {import('mysql2/promise').Pool}   pool
  * @param {object}                          wsService
  */
 async function processPurchase(event, pool, wsService) {
-    const { pembelianId, items, userId } = event;
+    const { pembelianId, items, userId, tipePembayaran, jumlahDp } = event;
 
     const conn = await pool.getConnection();
 
@@ -42,6 +49,7 @@ async function processPurchase(event, pool, wsService) {
 
         const stokUpdates = [];
 
+        // ── Langkah 1-2: Update stok dan harga beli per produk ───────────────
         for (const item of items) {
             // Konversi ke satuan dasar — KRITIS
             // Contoh: beli 5 karton kopi (isiSatuan=96) → tambah 480 pcs ke stok
@@ -64,26 +72,74 @@ async function processPurchase(event, pool, wsService) {
                 `(${item.qty} × ${item.isiSatuan}) | harga_beli_dasar → ${hargaBeliPerDasar}`
             );
 
-            // Stok baru tidak diketahui tanpa SELECT — gunakan sentinel -1 sebagai sinyal
-            // frontend untuk fetch ulang jika perlu nilai pasti
             stokUpdates.push({ produkId: item.produkId, tambahan: qtyDasar });
         }
 
+        // ── Langkah 3: UPDATE pembelian → COMPLETED ──────────────────────────
         await conn.query(
             `UPDATE pembelian SET status = 'COMPLETED' WHERE id = ?`,
             [pembelianId]
         );
 
+        // ── Langkah 4: INSERT pembayaran_pembelian (dalam transaction yang sama) ──
+        //
+        // Ambil total dari DB — bukan dari event payload — agar nilai yang
+        // digunakan pasti konsisten dengan yang tersimpan di tabel pembelian.
+        // Payload bisa saja tidak menyertakan total jika producer berubah.
+        const [poRows] = await conn.execute(
+            `SELECT total, sisa_hutang, tanggal_jatuh_tempo FROM pembelian WHERE id = ?`,
+            [pembelianId]
+        );
+        const total            = poRows[0].total;
+        const sisaHutang       = poRows[0].sisa_hutang;
+        const tanggalJatuhTempo = poRows[0].tanggal_jatuh_tempo;
+
+        if (tipePembayaran === 'cash') {
+            // Cash: PO lunas saat diterima → INSERT pembayaran sebesar total
+            await conn.execute(
+                `INSERT INTO pembayaran_pembelian
+                 (pembelian_id, user_id, jumlah, metode, tanggal_bayar, created_at)
+                 VALUES (?, ?, ?, 'cash', CURDATE(), NOW())`,
+                [pembelianId, userId, total]
+            );
+            console.log(`[PO CONSUMER] Pembayaran cash Rp${total} → pembelian ${pembelianId}`);
+
+        } else if (tipePembayaran === 'kredit' && jumlahDp > 0) {
+            // Kredit dengan DP: INSERT hanya sebesar DP — sisa dibayar nanti
+            // via endpoint POST /api/gudang/pembelian/{id}/bayar (sinkron, bukan Kafka)
+            await conn.execute(
+                `INSERT INTO pembayaran_pembelian
+                 (pembelian_id, user_id, jumlah, metode, tanggal_bayar, created_at)
+                 VALUES (?, ?, ?, 'cash', CURDATE(), NOW())`,
+                [pembelianId, userId, jumlahDp]
+            );
+            console.log(`[PO CONSUMER] DP kredit Rp${jumlahDp} → pembelian ${pembelianId} | sisa Rp${sisaHutang}`);
+
+        } else {
+            // Kredit dp=0: tidak ada pembayaran awal — SKIP INSERT
+            // Hutang penuh akan dibayar via endpoint bayar hutang
+            console.log(`[PO CONSUMER] Kredit tanpa DP → pembelian ${pembelianId} | hutang Rp${sisaHutang}`);
+        }
+
+        // ── Langkah 5: COMMIT semua — stok, status, pembayaran atomik ─────────
         await conn.commit();
 
-        console.log(`[PO CONSUMER] Pembelian ${pembelianId} → COMPLETED`);
+        console.log(
+            `[PO CONSUMER] Pembelian ${pembelianId} → COMPLETED ` +
+            `| tipe: ${tipePembayaran ?? 'N/A'} | sisa_hutang: ${sisaHutang}`
+        );
 
-        // Push notifikasi personal ke admin gudang yang membuat PO
+        // ── Push notifikasi personal ke admin gudang ──────────────────────────
         wsService.push(`user-${userId}`, {
-            event:       'purchase.completed',
-            pembelianId: pembelianId,
-            status:      'COMPLETED',
-            message:     'Restock berhasil. Stok sudah diperbarui.',
+            event:              'purchase.completed',
+            pembelianId:        pembelianId,
+            status:             'COMPLETED',
+            tipePembayaran:     tipePembayaran ?? null,
+            sisaHutang:         sisaHutang     ?? 0,
+            tanggalJatuhTempo:  tanggalJatuhTempo ?? null,
+            message:            tipePembayaran === 'cash'
+                ? 'Restock berhasil. Pembayaran cash tercatat.'
+                : `Restock berhasil. Sisa hutang: Rp${sisaHutang}.`,
         });
 
         // Broadcast ke semua terminal — stokBaru tidak diketahui tanpa SELECT tambahan,

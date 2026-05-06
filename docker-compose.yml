@@ -53,6 +53,9 @@ services:
       # Batas waktu void transaksi dalam menit (VoidTransaksiService::checkVoidEligibility)
       VOID_TIME_LIMIT_MINUTES: 30
 
+      # Notifikasi H-N sebelum jatuh tempo hutang dagang (PembayaranPembelianService)
+      HUTANG_REMINDER_DAYS: 3
+
       # WebSocket (untuk referensi di frontend jika dibutuhkan)
       WEBSOCKET_URL: ws://localhost/ws
 

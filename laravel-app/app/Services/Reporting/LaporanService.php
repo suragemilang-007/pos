@@ -404,6 +404,242 @@ class LaporanService
     }
 
     // ─────────────────────────────────────────────────────────────────────────
+    // LAPORAN HUTANG DAGANG
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Laporan hutang dagang — posisi hutang saat ini (bukan time-bounded).
+     *
+     * Mengapa tidak pakai filter tanggal?
+     * Hutang adalah kewajiban yang masih aktif — owner perlu melihat semua
+     * hutang yang BELUM LUNAS tanpa memedulikan kapan PO dibuat.
+     * Filter tanggal berlaku untuk laporan pembelian (historis), bukan hutang (kini).
+     *
+     * sudah_dibayar = total - sisa_hutang
+     *   — lebih akurat daripada SUM pembayaran_pembelian karena sisa_hutang
+     *   sudah di-maintain konsisten oleh PembayaranPembelianService setiap cicilan.
+     *
+     * hari_tersisa: nilai negatif berarti sudah terlewat jatuh tempo.
+     * NULL berarti PO cash (tidak ada jatuh tempo) — tidak relevan untuk hutang.
+     *
+     * @param array $filters  { supplier_id?: int, status?: string }
+     */
+    public function generateLaporanHutang(?array $filters = []): array
+    {
+        $filters ??= [];
+
+        // ── Daftar PO per supplier (agregasi) ────────────────────────────────
+        $perSupplierQuery = DB::table('pembelian as po')
+            ->selectRaw('
+                s.id                                                   AS supplier_id,
+                s.nama_supplier,
+                COUNT(po.id)                                           AS jumlah_po,
+                SUM(po.total)                                          AS grand_total_po,
+                SUM(po.total - po.sisa_hutang)                        AS sudah_dibayar,
+                SUM(po.sisa_hutang)                                    AS total_sisa,
+                SUM(CASE WHEN po.tanggal_jatuh_tempo IS NOT NULL
+                         AND po.tanggal_jatuh_tempo < CURDATE()
+                         THEN 1 ELSE 0 END)                            AS po_jatuh_tempo
+            ')
+            ->join('suppliers as s', 's.id', '=', 'po.supplier_id')
+            ->where('po.status', 'COMPLETED')
+            ->where('po.status_pembayaran', '!=', 'lunas');
+
+        if (! empty($filters['supplier_id'])) {
+            $perSupplierQuery->where('po.supplier_id', (int) $filters['supplier_id']);
+        }
+
+        $perSupplier = $perSupplierQuery
+            ->groupBy('s.id', 's.nama_supplier')
+            ->orderByDesc('total_sisa')
+            ->get();
+
+        // ── Daftar PO individual (semua non-lunas, urut jatuh tempo) ─────────
+        // NULL (cash, tidak ada jatuh tempo) diletakkan paling bawah via IS NULL ASC
+        $daftarQuery = DB::table('pembelian as po')
+            ->selectRaw('
+                po.id,
+                po.no_pembelian,
+                po.tanggal_pembelian,
+                s.nama_supplier,
+                po.total,
+                po.jumlah_dp,
+                po.total - po.sisa_hutang                             AS sudah_dibayar,
+                po.sisa_hutang,
+                po.tanggal_jatuh_tempo,
+                po.status_pembayaran,
+                po.catatan_pembayaran,
+                DATEDIFF(po.tanggal_jatuh_tempo, CURDATE())           AS hari_tersisa
+            ')
+            ->join('suppliers as s', 's.id', '=', 'po.supplier_id')
+            ->where('po.status', 'COMPLETED')
+            ->where('po.status_pembayaran', '!=', 'lunas');
+
+        if (! empty($filters['supplier_id'])) {
+            $daftarQuery->where('po.supplier_id', (int) $filters['supplier_id']);
+        }
+        if (! empty($filters['status'])) {
+            $daftarQuery->where('po.status_pembayaran', $filters['status']);
+        }
+
+        $daftar = $daftarQuery
+            ->orderByRaw('po.tanggal_jatuh_tempo IS NULL ASC')
+            ->orderBy('po.tanggal_jatuh_tempo')
+            ->get();
+
+        // ── Summary keseluruhan ───────────────────────────────────────────────
+        $summary = DB::table('pembelian')
+            ->selectRaw('
+                COUNT(*)                                               AS total_po,
+                SUM(sisa_hutang)                                       AS grand_total_hutang,
+                SUM(total - sisa_hutang)                               AS grand_sudah_dibayar,
+                SUM(CASE WHEN tanggal_jatuh_tempo IS NOT NULL
+                         AND tanggal_jatuh_tempo < CURDATE()
+                         THEN 1 ELSE 0 END)                            AS po_terlewat,
+                SUM(CASE WHEN tanggal_jatuh_tempo IS NOT NULL
+                         AND tanggal_jatuh_tempo >= CURDATE()
+                         AND tanggal_jatuh_tempo <= DATE_ADD(CURDATE(), INTERVAL 7 DAY)
+                         THEN 1 ELSE 0 END)                            AS po_jatuh_tempo_7hari
+            ')
+            ->where('status', 'COMPLETED')
+            ->where('status_pembayaran', '!=', 'lunas')
+            ->first();
+
+        return [
+            'summary'      => [
+                'total_po'              => (int)   ($summary->total_po             ?? 0),
+                'grand_total_hutang'    => (float) ($summary->grand_total_hutang   ?? 0),
+                'grand_sudah_dibayar'   => (float) ($summary->grand_sudah_dibayar  ?? 0),
+                'po_terlewat'           => (int)   ($summary->po_terlewat          ?? 0),
+                'po_jatuh_tempo_7hari'  => (int)   ($summary->po_jatuh_tempo_7hari ?? 0),
+            ],
+            'per_supplier' => $perSupplier->map(fn ($r) => [
+                'supplier_id'    => $r->supplier_id,
+                'nama_supplier'  => $r->nama_supplier,
+                'jumlah_po'      => (int)   $r->jumlah_po,
+                'grand_total_po' => (float) $r->grand_total_po,
+                'sudah_dibayar'  => (float) $r->sudah_dibayar,
+                'total_sisa'     => (float) $r->total_sisa,
+                'po_jatuh_tempo' => (int)   $r->po_jatuh_tempo,
+            ])->values(),
+            'daftar'       => $daftar->map(fn ($r) => [
+                'id'                => $r->id,
+                'no_pembelian'      => $r->no_pembelian,
+                'tanggal_pembelian' => $r->tanggal_pembelian,
+                'nama_supplier'     => $r->nama_supplier,
+                'total'             => (float) $r->total,
+                'jumlah_dp'         => (float) $r->jumlah_dp,
+                'sudah_dibayar'     => (float) $r->sudah_dibayar,
+                'sisa_hutang'       => (float) $r->sisa_hutang,
+                'tanggal_jatuh_tempo' => $r->tanggal_jatuh_tempo,
+                'hari_tersisa'      => $r->hari_tersisa !== null ? (int) $r->hari_tersisa : null,
+                'status_pembayaran' => $r->status_pembayaran,
+                'catatan'           => $r->catatan_pembayaran,
+            ])->values(),
+        ];
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // LAPORAN PENYESUAIAN STOK
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Laporan penyesuaian stok dalam rentang tanggal.
+     *
+     * Summary dipisah jadi dua kelompok berdasarkan arah stok:
+     *   - KURANG (barang_rusak, barang_hilang, barang_expired, koreksi_minus)
+     *     → total kerugian stok karena kondisi fisik atau koreksi opname
+     *   - TAMBAH (koreksi_plus)
+     *     → stok yang ditambahkan karena selisih positif setelah opname
+     *
+     * Hanya penyesuaian COMPLETED yang masuk summary — PENDING belum valid
+     * (Consumer belum memproses, qty_stok belum benar-benar berubah).
+     *
+     * qty_satuan_dasar selalu positif di DB — nilainya langsung bisa dijumlahkan
+     * per tipe untuk menghitung total satuan yang dikurangi/ditambahkan.
+     */
+    public function generateLaporanPenyesuaianStok(string $dari, string $sampai): array
+    {
+        // ── Daftar lengkap dalam periode ─────────────────────────────────────
+        $daftar = DB::table('penyesuaian_stok as ps')
+            ->selectRaw('
+                ps.id,
+                ps.created_at                                          AS tanggal,
+                p.kode_produk,
+                p.nama_produk,
+                p.satuan_dasar,
+                ps.tipe,
+                ps.qty_satuan_dasar,
+                ps.keterangan,
+                u.nama                                                 AS nama_admin,
+                ps.status
+            ')
+            ->join('produk as p', 'p.id', '=', 'ps.produk_id')
+            ->join('users as u',  'u.id', '=', 'ps.user_id')
+            ->whereBetween('ps.created_at', [
+                $dari   . ' 00:00:00',
+                $sampai . ' 23:59:59',
+            ])
+            ->orderByDesc('ps.created_at')
+            ->get();
+
+        // ── Summary per tipe (hanya COMPLETED) ───────────────────────────────
+        // Agregasi dilakukan query terpisah agar lebih efisien daripada
+        // filter-then-groupBy di collection PHP yang bisa lambat untuk data besar.
+        $perTipeRaw = DB::table('penyesuaian_stok')
+            ->selectRaw('tipe, COUNT(*) AS jumlah_item, SUM(qty_satuan_dasar) AS total_qty')
+            ->where('status', 'COMPLETED')
+            ->whereBetween('created_at', [
+                $dari   . ' 00:00:00',
+                $sampai . ' 23:59:59',
+            ])
+            ->groupBy('tipe')
+            ->get()
+            ->keyBy('tipe');
+
+        // Bangun summary per tipe dengan default 0 agar frontend tidak perlu null-check
+        $tipeList = ['barang_rusak', 'barang_hilang', 'barang_expired', 'koreksi_minus', 'koreksi_plus'];
+        $perTipe  = [];
+
+        foreach ($tipeList as $tipe) {
+            $row = $perTipeRaw->get($tipe);
+            $perTipe[$tipe] = [
+                'jumlah_item' => (int)   ($row->jumlah_item ?? 0),
+                'total_qty'   => (int)   ($row->total_qty   ?? 0),
+            ];
+        }
+
+        // Total kurang & tambah — berguna untuk chart di laporan
+        $totalKurang = collect(['barang_rusak', 'barang_hilang', 'barang_expired', 'koreksi_minus'])
+            ->sum(fn ($t) => $perTipe[$t]['total_qty']);
+
+        $totalTambah = $perTipe['koreksi_plus']['total_qty'];
+
+        return [
+            'periode' => ['dari' => $dari, 'sampai' => $sampai],
+            'summary' => [
+                'total_kejadian'  => $daftar->count(),
+                'total_kurang'    => (int) $totalKurang,
+                'total_tambah'    => (int) $totalTambah,
+                'selisih_bersih'  => (int) ($totalTambah - $totalKurang),
+            ],
+            'per_tipe' => $perTipe,
+            'daftar'   => $daftar->map(fn ($r) => [
+                'id'               => $r->id,
+                'tanggal'          => $r->tanggal,
+                'kode_produk'      => $r->kode_produk,
+                'nama_produk'      => $r->nama_produk,
+                'satuan_dasar'     => $r->satuan_dasar,
+                'tipe'             => $r->tipe,
+                'qty_satuan_dasar' => (int) $r->qty_satuan_dasar,
+                'keterangan'       => $r->keterangan,
+                'nama_admin'       => $r->nama_admin,
+                'status'           => $r->status,
+            ])->values(),
+        ];
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
     // METRIK BISNIS
     // ─────────────────────────────────────────────────────────────────────────
 
@@ -514,6 +750,41 @@ class LaporanService
                 $rows[] = [
                     $p['nama_promo'], $p['tipe'], $p['jumlah_diterapkan'],
                     $p['total_item_bonus'], $p['total_nilai_diskon'],
+                ];
+            }
+        } elseif ($jenis === 'hutang') {
+            $rows[] = ['No PO', 'Tgl Pembelian', 'Supplier', 'Total PO (Rp)',
+                       'Sudah Dibayar (Rp)', 'Sisa Hutang (Rp)', 'Jatuh Tempo', 'Hari Tersisa', 'Status'];
+            foreach ($laporan['daftar'] as $d) {
+                $hariTersisa = $d['hari_tersisa'] !== null
+                    ? ($d['hari_tersisa'] < 0 ? 'Terlewat ' . abs($d['hari_tersisa']) . ' hari' : $d['hari_tersisa'] . ' hari lagi')
+                    : 'Cash';
+                $rows[] = [
+                    $d['no_pembelian'],
+                    $d['tanggal_pembelian'],
+                    $d['nama_supplier'],
+                    $d['total'],
+                    $d['sudah_dibayar'],
+                    $d['sisa_hutang'],
+                    $d['tanggal_jatuh_tempo'] ?? '-',
+                    $hariTersisa,
+                    $d['status_pembayaran'],
+                ];
+            }
+        } elseif ($jenis === 'penyesuaian_stok') {
+            $rows[] = ['Tanggal', 'Kode Produk', 'Nama Produk', 'Satuan',
+                       'Tipe', 'Qty', 'Keterangan', 'Admin', 'Status'];
+            foreach ($laporan['daftar'] as $d) {
+                $rows[] = [
+                    $d['tanggal'],
+                    $d['kode_produk'],
+                    $d['nama_produk'],
+                    $d['satuan_dasar'],
+                    $d['tipe'],
+                    $d['qty_satuan_dasar'],
+                    $d['keterangan'],
+                    $d['nama_admin'],
+                    $d['status'],
                 ];
             }
         }

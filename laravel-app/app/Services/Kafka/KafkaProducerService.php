@@ -4,6 +4,7 @@ namespace App\Services\Kafka;
 
 use App\Models\DetailTransaksi;
 use App\Models\Pembelian;
+use App\Models\PenyesuaianStok;
 use App\Models\ReturPembelian;
 use App\Models\ReturPenjualan;
 use App\Models\Transaksi;
@@ -87,10 +88,10 @@ class KafkaProducerService
         $pembelian->loadMissing('details');
 
         $payload = [
-            'eventType'   => 'purchase.created',
-            'pembelianId' => $pembelian->id,
-            'supplierId'  => $pembelian->supplier_id,
-            'items'       => $pembelian->details->map(fn ($d) => [
+            'eventType'      => 'purchase.created',
+            'pembelianId'    => $pembelian->id,
+            'supplierId'     => $pembelian->supplier_id,
+            'items'          => $pembelian->details->map(fn ($d) => [
                 'produkId'        => $d->produk_id,
                 'produkSatuanId'  => $d->produk_satuan_id,
                 'namaSatuan'      => $d->nama_satuan,
@@ -98,8 +99,11 @@ class KafkaProducerService
                 'qty'             => (int) $d->qty,
                 'hargaBeliSatuan' => (float) $d->harga_beli_satuan,
             ])->values()->all(),
-            'userId'      => $pembelian->user_id,
-            'timestamp'   => now()->toIso8601String(),
+            'userId'         => $pembelian->user_id,
+            // v4: info pembayaran — Consumer INSERT pembayaran_pembelian jika cash/dp>0
+            'tipePembayaran' => $pembelian->tipe_pembayaran,
+            'jumlahDp'       => (float) $pembelian->jumlah_dp,
+            'timestamp'      => now()->toIso8601String(),
         ];
 
         return $this->publish($payload, "purchase.created pembelianId={$pembelian->id}");
@@ -218,6 +222,56 @@ class KafkaProducerService
         ];
 
         return $this->publish($payload, "transaction.void.requested voidId={$void->id}");
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // PENYESUAIAN STOK
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Publish event penyesuaian stok ke Kafka (SD-20).
+     *
+     * MENGAPA VIA KAFKA (bukan UPDATE langsung di Service)?
+     *
+     * Penyesuaian stok berdampak pada qty_stok — data yang dipantau real-time
+     * oleh semua terminal kasir aktif. Jika UPDATE dilakukan sinkron di Laravel:
+     *   - Kasir A yang sedang di halaman pantau stok tidak akan tahu stok berubah
+     *     sampai mereka refresh manual → risiko transaksi dengan stok stale
+     *   - Tidak ada mekanisme broadcast ke WebSocket dari dalam PHP (Laravel tidak
+     *     punya koneksi langsung ke WS server di Node.js)
+     *
+     * Dengan alur Kafka:
+     *   1. Laravel INSERT penyesuaian_stok (PENDING) → publish event
+     *   2. Consumer UPDATE qty_stok di DB → push WebSocket 'stock.updated'
+     *   3. Semua browser yang subscribe 'stok-global' menerima stok terbaru
+     *      tanpa perlu refresh → kasir tidak bisa menjual stok yang sudah disesuaikan
+     *
+     * Berbeda dengan pembayaran hutang yang tidak via Kafka: pembayaran tidak
+     * mengubah qty_stok, hanya data keuangan → tidak butuh real-time ke kasir.
+     *
+     * Consumer (adjustmentConsumer.js) menentukan arah dari field `tipe`:
+     *   koreksi_plus                               → qty_stok += qtySatuanDasar
+     *   barang_rusak | hilang | expired | koreksi_minus → qty_stok -= qtySatuanDasar
+     *
+     * qtySatuanDasar selalu positif — arah ditentukan oleh tipe, bukan tanda nilai.
+     * Tidak perlu isi_satuan karena qty sudah dalam satuan_dasar (tidak perlu konversi).
+     */
+    public function publishStockAdjustment(PenyesuaianStok $penyesuaian): bool
+    {
+        $payload = [
+            'eventType'       => 'stock.adjustment.requested',
+            'adjustmentId'    => $penyesuaian->id,
+            'produkId'        => $penyesuaian->produk_id,
+            'qtySatuanDasar'  => (int) $penyesuaian->qty_satuan_dasar,
+            'tipe'            => $penyesuaian->tipe,
+            'userId'          => $penyesuaian->user_id,
+            'timestamp'       => now()->toIso8601String(),
+        ];
+
+        return $this->publish(
+            $payload,
+            "stock.adjustment.requested adjustmentId={$penyesuaian->id}"
+        );
     }
 
     // ─────────────────────────────────────────────────────────────────────────

@@ -46,4 +46,9 @@ return [
     // Akses: config('services.void_time_limit')
     'void_time_limit' => (int) env('VOID_TIME_LIMIT_MINUTES', 30),
 
+    // Hutang Dagang — berapa hari sebelum jatuh tempo mulai kirim reminder
+    // Dipakai PembelianService::getHutangJatuhTempoDalam() dan dashboard gudang
+    // Akses: config('services.hutang_reminder_days')
+    'hutang_reminder_days' => (int) env('HUTANG_REMINDER_DAYS', 3),
+
 ];

@@ -19,10 +19,11 @@ const { createPool }                       = require('./config/database');
 const { start: startHttp }                 = require('./producers/httpServer');
 const { start: startWs }                   = require('./websocket/wsServer');
 const wsService                            = require('./services/wsService');
-const { start: startTransactionConsumer }          = require('./consumers/transactionConsumer');
-const { startVoidConsumer, stopVoidConsumer }       = require('./consumers/voidConsumer');
-const { start: startPurchaseConsumer }             = require('./consumers/purchaseConsumer');
-const { start: startReturnConsumer }               = require('./consumers/returnConsumer');
+const { start: startTransactionConsumer }                    = require('./consumers/transactionConsumer');
+const { startVoidConsumer, stopVoidConsumer }               = require('./consumers/voidConsumer');
+const { start: startPurchaseConsumer }                       = require('./consumers/purchaseConsumer');
+const { start: startReturnConsumer }                         = require('./consumers/returnConsumer');
+const { startAdjustmentConsumer, stopAdjustmentConsumer }   = require('./consumers/adjustmentConsumer');
 
 // ─── Referensi untuk graceful shutdown ───────────────────────────────────────
 let httpServer    = null;
@@ -150,6 +151,10 @@ async function main() {
         await startVoidConsumer(kafka, pool, wsService);
         console.log('[INIT] Void consumer aktif');
 
+        // Adjustment consumer — group pos-adjustment-group, topic inventory-updates
+        await startAdjustmentConsumer(kafka, pool, wsService);
+        console.log('[INIT] Adjustment consumer aktif');
+
         console.log('[MAIN] Semua Kafka consumer aktif');
 
     } catch (err) {
@@ -182,6 +187,13 @@ async function shutdown(signal) {
         await stopVoidConsumer();
     } catch (err) {
         console.error('[SHUTDOWN] Error disconnect void consumer:', err.message);
+    }
+
+    // Adjustment consumer — lifecycle terpisah seperti void consumer
+    try {
+        await stopAdjustmentConsumer();
+    } catch (err) {
+        console.error('[SHUTDOWN] Error disconnect adjustment consumer:', err.message);
     }
 
     for (const consumer of consumers) {

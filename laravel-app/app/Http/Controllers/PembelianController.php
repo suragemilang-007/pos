@@ -8,6 +8,7 @@ use App\Models\Produk;
 use App\Services\Purchasing\PembelianService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class PembelianController extends Controller
 {
@@ -113,10 +114,14 @@ class PembelianController extends Controller
             $v = $request->validated();
 
             $pembelian = $this->pembelianService->create(
-                supplierId: $v['supplier_id'],
-                items:      $v['items'],
-                tanggal:    $v['tanggal_pembelian'],
-                userId:     $request->input('auth_user_id')
+                supplierId:          $v['supplier_id'],
+                items:               $v['items'],
+                tanggal:             $v['tanggal_pembelian'],
+                tipePembayaran:      $v['tipe_pembayaran'],
+                jumlahDp:            (float) ($v['jumlah_dp'] ?? 0),
+                tanggalJatuhTempo:   $v['tanggal_jatuh_tempo'] ?? null,
+                catatanPembayaran:   $v['catatan_pembayaran'] ?? null,
+                userId:              (int) $request->input('auth_user_id')
             );
 
             return response()->json([
@@ -131,6 +136,92 @@ class PembelianController extends Controller
                 'message' => 'Gagal mengirim pembelian ke antrian: ' . $e->getMessage(),
             ], 503);
         }
+    }
+
+    /**
+     * GET /api/gudang/hutang — SD-19
+     *
+     * Daftar PO yang belum lunas (belum_lunas atau sebagian), terurut
+     * dari yang paling dekat jatuh temponya agar admin melihat prioritas.
+     *
+     * withSum('pembayaran','jumlah') dipakai untuk menghindari N+1 pada
+     * total_dibayar — lebih efisien dari accessor $p->total_dibayar yang
+     * lazy-load semua record pembayaran per PO.
+     */
+    public function daftarHutang(Request $request): JsonResponse
+    {
+        $reminderDays = config('services.hutang_reminder_days', 3);
+
+        // Filter status_pembayaran — default: semua kredit (belum_lunas & sebagian).
+        // Klien bisa kirim nilai tunggal atau koma-pisah (misal "belum_lunas,sebagian").
+        $validStatus = ['belum_lunas', 'sebagian', 'lunas'];
+        $statusFilter = $request->filled('status_pembayaran')
+            ? array_intersect(explode(',', $request->input('status_pembayaran')), $validStatus)
+            : ['belum_lunas', 'sebagian'];
+        if (empty($statusFilter)) {
+            $statusFilter = ['belum_lunas', 'sebagian'];
+        }
+
+        $query = Pembelian::with('supplier:id,nama_supplier')
+            ->withSum('pembayaran', 'jumlah')
+            ->whereIn('status_pembayaran', $statusFilter)
+            ->where('status', 'COMPLETED');
+
+        if ($request->filled('supplier_id')) {
+            $query->where('supplier_id', $request->integer('supplier_id'));
+        }
+
+        // Urut: jatuh tempo terdekat di atas (NULL = cash, taruh paling bawah)
+        $query->orderByRaw('tanggal_jatuh_tempo IS NULL ASC')
+              ->orderBy('tanggal_jatuh_tempo', 'asc');
+
+        $limit     = min((int) $request->input('limit', 20), 100);
+        $paginated = $query->paginate($limit);
+
+        // Ringkasan keseluruhan (tidak terpengaruh pagination)
+        $ringkasan = Pembelian::where('status', 'COMPLETED')
+            ->whereIn('status_pembayaran', ['belum_lunas', 'sebagian'])
+            ->selectRaw('
+                SUM(sisa_hutang)                                          AS total_hutang_semua,
+                SUM(CASE WHEN tanggal_jatuh_tempo <= DATE_ADD(CURDATE(), INTERVAL ? DAY)
+                         AND tanggal_jatuh_tempo >= CURDATE()
+                         THEN 1 ELSE 0 END)                               AS hutang_jatuh_tempo_n_hari
+            ', [$reminderDays])
+            ->first();
+
+        $data = $paginated->getCollection()->map(fn (Pembelian $po) => [
+            'id'                  => $po->id,
+            'no_pembelian'        => $po->no_pembelian,
+            'tanggal_pembelian'   => $po->tanggal_pembelian
+                ? (is_string($po->tanggal_pembelian) ? $po->tanggal_pembelian : $po->tanggal_pembelian->format('Y-m-d'))
+                : null,
+            'supplier'            => $po->supplier
+                ? ['id' => $po->supplier->id, 'nama_supplier' => $po->supplier->nama_supplier]
+                : null,
+            'total'               => (float) $po->total,
+            'jumlah_dp'           => (float) $po->jumlah_dp,
+            'sisa_hutang'         => (float) $po->sisa_hutang,
+            'tanggal_jatuh_tempo' => $po->tanggal_jatuh_tempo
+                ? $po->tanggal_jatuh_tempo->format('Y-m-d')
+                : null,
+            'status_pembayaran'   => $po->status_pembayaran,
+            'hari_tersisa'        => $po->hari_tersisa,
+            'total_dibayar'       => (float) ($po->pembayaran_sum_jumlah ?? 0),
+        ]);
+
+        return response()->json([
+            'data'       => $data->values(),
+            'ringkasan'  => [
+                'total_hutang_semua'        => (float) ($ringkasan->total_hutang_semua ?? 0),
+                'hutang_jatuh_tempo_3hari'  => (int)   ($ringkasan->hutang_jatuh_tempo_n_hari ?? 0),
+            ],
+            'pagination' => [
+                'current_page' => $paginated->currentPage(),
+                'last_page'    => $paginated->lastPage(),
+                'per_page'     => $paginated->perPage(),
+                'total'        => $paginated->total(),
+            ],
+        ], 200);
     }
 
     /**

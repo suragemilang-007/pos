@@ -28,6 +28,12 @@ Route::get('/gudang/pembelian', fn() => view('gudang.pembelian.index'))->name('g
 Route::get('/gudang/pembelian/create', fn() => view('gudang.pembelian.create'))->name('gudang.pembelian.create');
 Route::get('/gudang/pembelian/{id}', fn($id) => view('gudang.pembelian.show', ['pembelianId' => (int) $id]))->name('gudang.pembelian.show');
 Route::get('/gudang/supplier', fn() => view('gudang.supplier.index'))->name('gudang.supplier');
+Route::get('/gudang/promo', fn() => view('gudang.promo.index'))->name('gudang.promo');
+Route::get('/gudang/hutang', fn() => view('gudang.hutang.index'))->name('gudang.hutang');
+Route::get('/gudang/penyesuaian-stok', fn() => view('gudang.penyesuaian-stok.index'))->name('gudang.penyesuaian-stok');
+
+// ─── Kasir ────────────────────────────────────────────────────────────────────
+Route::get('/kasir/void-transaksi', fn() => view('kasir.void-transaksi'))->name('kasir.void-transaksi');
 
 // ─── Owner ────────────────────────────────────────────────────────────────────
 Route::get('/user', fn() => view('owner.user.index'))->name('owner.user');

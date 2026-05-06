@@ -10,7 +10,7 @@ use Illuminate\Http\Response;
 class LaporanController extends Controller
 {
     // Jenis laporan yang diizinkan — validasi di controller agar pesan error jelas
-    private const JENIS_VALID = ['penjualan', 'stok', 'pembelian', 'void', 'promo'];
+    private const JENIS_VALID = ['penjualan', 'stok', 'pembelian', 'void', 'promo', 'hutang', 'penyesuaian_stok'];
 
     public function __construct(
         private readonly LaporanService $laporanService
@@ -34,10 +34,10 @@ class LaporanController extends Controller
         $dari    = $request->input('dari',   now()->startOfMonth()->format('Y-m-d'));
         $sampai  = $request->input('sampai', now()->format('Y-m-d'));
 
-        $data   = $this->getData($jenis, $dari, $sampai, $request->integer('kategori_id') ?: null);
+        $data   = $this->getData($jenis, $dari, $sampai, $request);
 
         // Metrik bisnis hanya relevan untuk laporan penjualan & pembelian
-        // Void dan promo adalah laporan operasional, bukan metrik keuangan
+        // Void, promo, hutang, dan penyesuaian adalah laporan operasional
         $metrik = in_array($jenis, ['penjualan', 'pembelian'])
             ? $this->laporanService->getMetrikBisnis($dari, $sampai)
             : null;
@@ -68,7 +68,7 @@ class LaporanController extends Controller
         $format  = $request->input('format', 'excel');
         $dari    = $request->input('dari',   now()->startOfMonth()->format('Y-m-d'));
         $sampai  = $request->input('sampai', now()->format('Y-m-d'));
-        $data    = $this->getData($jenis, $dari, $sampai, $request->integer('kategori_id') ?: null);
+        $data    = $this->getData($jenis, $dari, $sampai, $request);
 
         if ($format === 'pdf') {
             $html     = $this->laporanService->exportHtml($data, $jenis, $dari, $sampai);
@@ -94,14 +94,20 @@ class LaporanController extends Controller
     // PRIVATE HELPER
     // ─────────────────────────────────────────────────────────────────────────
 
-    private function getData(string $jenis, string $dari, string $sampai, ?int $kategoriId): array
+    private function getData(string $jenis, string $dari, string $sampai, Request $request): array
     {
         return match ($jenis) {
-            'penjualan' => $this->laporanService->generateLaporanPenjualan($dari, $sampai),
-            'stok'      => $this->laporanService->generateLaporanStok($kategoriId),
-            'pembelian' => $this->laporanService->generateLaporanPembelian($dari, $sampai),
-            'void'      => $this->laporanService->generateLaporanVoid($dari, $sampai),
-            'promo'     => $this->laporanService->generateLaporanPromo($dari, $sampai),
+            'penjualan'        => $this->laporanService->generateLaporanPenjualan($dari, $sampai),
+            'stok'             => $this->laporanService->generateLaporanStok(
+                                      $request->integer('kategori_id') ?: null
+                                  ),
+            'pembelian'        => $this->laporanService->generateLaporanPembelian($dari, $sampai),
+            'void'             => $this->laporanService->generateLaporanVoid($dari, $sampai),
+            'promo'            => $this->laporanService->generateLaporanPromo($dari, $sampai),
+            'hutang'           => $this->laporanService->generateLaporanHutang(
+                                      $request->only(['supplier_id', 'status'])
+                                  ),
+            'penyesuaian_stok' => $this->laporanService->generateLaporanPenyesuaianStok($dari, $sampai),
         };
     }
 }
