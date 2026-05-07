@@ -771,7 +771,7 @@ class LaporanService
                     $d['status_pembayaran'],
                 ];
             }
-        } elseif ($jenis === 'penyesuaian_stok') {
+        } elseif ($jenis === 'penyesuaian-stok') {
             $rows[] = ['Tanggal', 'Kode Produk', 'Nama Produk', 'Satuan',
                        'Tipe', 'Qty', 'Keterangan', 'Admin', 'Status'];
             foreach ($laporan['daftar'] as $d) {

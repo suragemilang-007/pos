@@ -99,6 +99,96 @@
         </div>
     </div>
 
+    {{-- ── Tipe Pembayaran ─────────────────────────────────────────────────── --}}
+    <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
+        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+            <h3 class="text-base font-semibold text-gray-800 dark:text-gray-200">Tipe Pembayaran</h3>
+        </div>
+        <div class="p-6 space-y-5">
+
+            {{-- Radio Cash / Kredit --}}
+            <div class="flex gap-6">
+                <label class="flex items-center gap-2.5 cursor-pointer group">
+                    <input type="radio" name="tipe-pembayaran" value="cash" checked
+                        class="w-4 h-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 dark:border-gray-600"
+                        onchange="onTipePembayaranChange('cash')">
+                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100">
+                        Cash <span class="text-xs font-normal text-gray-400">(lunas saat diterima)</span>
+                    </span>
+                </label>
+                <label class="flex items-center gap-2.5 cursor-pointer group">
+                    <input type="radio" name="tipe-pembayaran" value="kredit"
+                        class="w-4 h-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 dark:border-gray-600"
+                        onchange="onTipePembayaranChange('kredit')">
+                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100">
+                        Kredit <span class="text-xs font-normal text-gray-400">(bayar nanti / cicilan)</span>
+                    </span>
+                </label>
+            </div>
+
+            {{-- Section kredit — muncul hanya saat pilih Kredit --}}
+            <div id="section-kredit" class="hidden space-y-4 pl-6 border-l-2 border-indigo-200 dark:border-indigo-700">
+
+                {{-- DP + Jatuh Tempo --}}
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                    <div class="space-y-1">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                            Down Payment (DP)
+                            <span class="text-xs font-normal text-gray-400">(opsional, isi 0 jika tidak ada DP)</span>
+                        </label>
+                        <div class="relative">
+                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">Rp</span>
+                            <input id="input-dp" type="number" value="0" min="0" step="1000"
+                                class="block w-full pl-8 pr-3 py-2 text-sm font-mono bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
+                                oninput="updatePaymentSummary(); clearErr('err-dp')">
+                        </div>
+                        <p id="err-dp" class="hidden text-xs text-red-600 dark:text-red-400"></p>
+                    </div>
+
+                    <div class="space-y-1">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                            Tanggal Jatuh Tempo <span class="text-red-500">*</span>
+                        </label>
+                        <input id="input-jatuh-tempo" type="date"
+                            class="block w-full px-3 py-2 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
+                            onchange="updatePaymentSummary(); clearErr('err-jatuh-tempo')">
+                        <p id="err-jatuh-tempo" class="hidden text-xs text-red-600 dark:text-red-400"></p>
+                    </div>
+                </div>
+
+                {{-- Catatan --}}
+                <div class="space-y-1">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Catatan Pembayaran <span class="text-xs font-normal text-gray-400">(opsional)</span>
+                    </label>
+                    <textarea id="input-catatan" rows="2" placeholder="Contoh: Net 30, cicil 3x, dll."
+                        class="block w-full px-3 py-2 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors resize-none"></textarea>
+                </div>
+            </div>
+
+            {{-- Summary otomatis --}}
+            <div id="payment-summary" class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 space-y-1.5">
+                <div class="flex justify-between text-sm">
+                    <span class="text-gray-500 dark:text-gray-400">Total PO</span>
+                    <span id="sum-total" class="font-mono font-semibold text-gray-900 dark:text-gray-100">Rp 0</span>
+                </div>
+                <div id="sum-dp-row" class="hidden justify-between text-sm">
+                    <span class="text-gray-500 dark:text-gray-400">DP Dibayar</span>
+                    <span id="sum-dp" class="font-mono text-green-600 dark:text-green-400">Rp 0</span>
+                </div>
+                <div id="sum-sisa-row" class="hidden justify-between text-sm pt-1.5 border-t border-gray-200 dark:border-gray-600">
+                    <span class="font-medium text-gray-700 dark:text-gray-300">Sisa Hutang</span>
+                    <span id="sum-sisa" class="font-mono font-bold text-red-600 dark:text-red-400">Rp 0</span>
+                </div>
+                <div id="sum-jt-row" class="hidden justify-between text-sm">
+                    <span class="text-gray-500 dark:text-gray-400">Jatuh Tempo</span>
+                    <span id="sum-jt" class="text-amber-600 dark:text-amber-400 font-medium">—</span>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
     {{-- ── Tombol Aksi ──────────────────────────────────────────────────────── --}}
     <div class="flex items-center justify-between pb-6">
         <a href="/gudang/pembelian"
@@ -144,6 +234,8 @@ let pendingPoId = null;
 let pollTimer   = null;
 let searchTimer = null;
 let activeSearchRow = null;
+let tipePembayaran  = 'cash';  // 'cash' | 'kredit'
+let wsPoDetail      = null;    // payload WS purchase.completed — untuk hutang notification
 
 // Cache hasil search produk — onclick di dropdown hanya kirim produkId (angka),
 // data lengkap diambil dari sini untuk menghindari JSON-in-HTML yang rusak parsing.
@@ -324,6 +416,56 @@ function updateTotal() {
     const total = items.reduce((s, r) => s + (r.qty||1) * (r.harga_beli_satuan||0), 0);
     document.getElementById('lbl-total').textContent = 'Rp ' + fmt(total);
     document.getElementById('lbl-jumlah-item').textContent = items.length;
+    updatePaymentSummary();
+}
+
+// ── Tipe Pembayaran ───────────────────────────────────────────────────────────
+function onTipePembayaranChange(tipe) {
+    tipePembayaran = tipe;
+    const sectionKredit = document.getElementById('section-kredit');
+    if (tipe === 'kredit') {
+        sectionKredit.classList.remove('hidden');
+        // Set minimal tanggal jatuh tempo = besok
+        const besok = new Date();
+        besok.setDate(besok.getDate() + 1);
+        document.getElementById('input-jatuh-tempo').min = besok.toISOString().slice(0, 10);
+    } else {
+        sectionKredit.classList.add('hidden');
+        // Reset field kredit saat kembali ke cash
+        document.getElementById('input-dp').value          = '0';
+        document.getElementById('input-jatuh-tempo').value = '';
+        document.getElementById('input-catatan').value     = '';
+        clearErr('err-dp');
+        clearErr('err-jatuh-tempo');
+    }
+    updatePaymentSummary();
+}
+
+function updatePaymentSummary() {
+    const total = items.reduce((s, r) => s + (r.qty||1) * (r.harga_beli_satuan||0), 0);
+    const dp    = tipePembayaran === 'kredit' ? (parseFloat(document.getElementById('input-dp').value) || 0) : 0;
+    const sisa  = Math.max(0, total - dp);
+    const jt    = tipePembayaran === 'kredit' ? document.getElementById('input-jatuh-tempo').value : '';
+
+    document.getElementById('sum-total').textContent = 'Rp ' + fmt(total);
+
+    // Rows kredit — gunakan flex saat tampil
+    const showRow = (id, show) => {
+        const el = document.getElementById(id);
+        if (show) { el.classList.remove('hidden'); el.classList.add('flex'); }
+        else       { el.classList.add('hidden');    el.classList.remove('flex'); }
+    };
+
+    const isKredit = tipePembayaran === 'kredit';
+    showRow('sum-dp-row',   isKredit && dp > 0);
+    showRow('sum-sisa-row', isKredit);
+    showRow('sum-jt-row',   isKredit);
+
+    document.getElementById('sum-dp').textContent   = 'Rp ' + fmt(dp);
+    document.getElementById('sum-sisa').textContent = 'Rp ' + fmt(sisa);
+    document.getElementById('sum-jt').textContent   = jt
+        ? new Date(jt).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })
+        : '— belum diisi —';
 }
 
 // ── Autocomplete Produk ───────────────────────────────────────────────────────
@@ -424,6 +566,23 @@ function validasi() {
     const noQty = items.filter(r => !(r.qty >= 1));
     if (noQty.length) { showErrItems('Qty semua item harus ≥ 1'); ok = false; }
 
+    // Validasi kredit
+    if (tipePembayaran === 'kredit') {
+        const dp    = parseFloat(document.getElementById('input-dp').value) || 0;
+        const total = items.reduce((s, r) => s + (r.qty||1) * (r.harga_beli_satuan||0), 0);
+        if (dp < 0) {
+            showErr('err-dp', 'DP tidak boleh negatif');
+            ok = false;
+        } else if (dp >= total && total > 0) {
+            showErr('err-dp', 'DP melebihi atau sama dengan total PO — gunakan tipe Cash');
+            ok = false;
+        }
+        if (!document.getElementById('input-jatuh-tempo').value) {
+            showErr('err-jatuh-tempo', 'Tanggal jatuh tempo wajib diisi untuk pembayaran kredit');
+            ok = false;
+        }
+    }
+
     return ok;
 }
 
@@ -432,9 +591,17 @@ async function buatPO() {
 
     setBuatLoading(true);
 
+    const dp             = tipePembayaran === 'kredit' ? (parseFloat(document.getElementById('input-dp').value) || 0) : 0;
+    const jatuhTempo     = tipePembayaran === 'kredit' ? document.getElementById('input-jatuh-tempo').value : null;
+    const catatanBayar   = tipePembayaran === 'kredit' ? (document.getElementById('input-catatan').value.trim() || null) : null;
+
     const payload = {
-        supplier_id:      parseInt(document.getElementById('input-supplier').value),
-        tanggal_pembelian:document.getElementById('input-tanggal').value,
+        supplier_id:          parseInt(document.getElementById('input-supplier').value),
+        tanggal_pembelian:    document.getElementById('input-tanggal').value,
+        tipe_pembayaran:      tipePembayaran,
+        jumlah_dp:            dp,
+        tanggal_jatuh_tempo:  jatuhTempo,
+        catatan_pembayaran:   catatanBayar,
         items: items.map(r => ({
             produk_id:         r.produk_id,
             produk_satuan_id:  r.produk_satuan_id,
@@ -447,7 +614,7 @@ async function buatPO() {
 
     try {
         const { data } = await axios.post('/api/gudang/pembelian', payload);
-        // 202 Accepted — Consumer yang proses stok
+        // 202 Accepted — Consumer yang proses stok dan pembayaran
         pendingPoId = data.id_pembelian;
         setBuatLoading(false);
         document.getElementById('status-kafka').classList.remove('hidden');
@@ -458,8 +625,10 @@ async function buatPO() {
         setBuatLoading(false);
         const errors = err.response?.data?.errors;
         if (errors) {
-            if (errors.supplier_id) showErr('err-supplier', errors.supplier_id[0]);
-            if (errors.tanggal_pembelian) showErr('err-tanggal', errors.tanggal_pembelian[0]);
+            if (errors.supplier_id)        showErr('err-supplier', errors.supplier_id[0]);
+            if (errors.tanggal_pembelian)  showErr('err-tanggal', errors.tanggal_pembelian[0]);
+            if (errors.jumlah_dp)          showErr('err-dp', errors.jumlah_dp[0]);
+            if (errors.tanggal_jatuh_tempo) showErr('err-jatuh-tempo', errors.tanggal_jatuh_tempo[0]);
             const itemErr = Object.entries(errors).find(([k]) => k.startsWith('items'));
             if (itemErr) showErrItems(itemErr[1][0]);
         } else {
@@ -497,12 +666,36 @@ function stopPolling() {
 function onPoSelesai(poId) {
     document.getElementById('status-kafka').classList.add('hidden');
     showToast('success', 'PO Berhasil Dibuat', 'Stok produk telah diperbarui. Mengarahkan ke detail PO...');
-    setTimeout(() => { window.location.href = '/gudang/pembelian/' + poId; }, 1500);
+
+    // Notifikasi hutang untuk PO kredit
+    // Prioritas data: payload WS (paling akurat) > form input (fallback)
+    const tipe      = wsPoDetail?.tipePembayaran ?? tipePembayaran;
+    if (tipe === 'kredit') {
+        const sisa     = wsPoDetail?.sisaHutang
+            ?? Math.max(0, items.reduce((s,r) => s+(r.qty||1)*(r.harga_beli_satuan||0), 0)
+               - (parseFloat(document.getElementById('input-dp')?.value) || 0));
+        const jt       = wsPoDetail?.tanggalJatuhTempo
+            ?? document.getElementById('input-jatuh-tempo')?.value;
+        const tglFmt   = jt
+            ? new Date(jt).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })
+            : '—';
+        const selEl    = document.getElementById('input-supplier');
+        const supplier = selEl?.options[selEl.selectedIndex]?.text ?? 'Supplier';
+
+        // Tunda sedikit agar toast sukses muncul duluan
+        setTimeout(() => {
+            showToast('warning', '⚠ Hutang Tercatat',
+                `Rp ${fmt(sisa)} ke ${esc(supplier)} — jatuh tempo ${tglFmt}`);
+        }, 400);
+    }
+
+    setTimeout(() => { window.location.href = '/gudang/pembelian/' + poId; }, 2200);
 }
 
-// WS fallback — jika polling belum cukup cepat
+// WS purchase.completed — lebih cepat dari polling
 document.addEventListener('ws:purchase-completed', function (e) {
     if (!pendingPoId) return;
+    wsPoDetail = e.detail ?? null;  // simpan payload untuk onPoSelesai
     stopPolling();
     onPoSelesai(pendingPoId);
 });
@@ -525,7 +718,7 @@ function clearErr(id) {
     if (el) el.classList.add('hidden');
 }
 function clearAllErr() {
-    ['err-supplier', 'err-tanggal'].forEach(id => clearErr(id));
+    ['err-supplier', 'err-tanggal', 'err-dp', 'err-jatuh-tempo'].forEach(id => clearErr(id));
     document.getElementById('err-items').classList.add('hidden');
 }
 function showErrItems(msg) {

@@ -47,7 +47,7 @@ async function processPurchase(event, pool, wsService) {
     try {
         await conn.beginTransaction();
 
-        const stokUpdates = [];
+        const produkIds = [];   // kumpulkan untuk SELECT stok terbaru setelah COMMIT
 
         // ── Langkah 1-2: Update stok dan harga beli per produk ───────────────
         for (const item of items) {
@@ -72,7 +72,7 @@ async function processPurchase(event, pool, wsService) {
                 `(${item.qty} × ${item.isiSatuan}) | harga_beli_dasar → ${hargaBeliPerDasar}`
             );
 
-            stokUpdates.push({ produkId: item.produkId, tambahan: qtyDasar });
+            produkIds.push(item.produkId);
         }
 
         // ── Langkah 3: UPDATE pembelian → COMPLETED ──────────────────────────
@@ -142,12 +142,23 @@ async function processPurchase(event, pool, wsService) {
                 : `Restock berhasil. Sisa hutang: Rp${sisaHutang}.`,
         });
 
-        // Broadcast ke semua terminal — stokBaru tidak diketahui tanpa SELECT tambahan,
-        // broadcast tetap dikirim agar terminal lain tahu ada perubahan dan bisa
-        // request ulang data stok terbaru
+        // ── Ambil stok terbaru setelah COMMIT lalu broadcast ke semua terminal ──
+        //
+        // Query menggunakan pool (bukan conn yang sudah commit) agar mendapat
+        // snapshot terbaru dari InnoDB — sama dengan pattern di voidConsumer.js
+        // dan adjustmentConsumer.js.
+        //
+        // Pantau Stok (stok.blade.php) mengharapkan { produkId, stokBaru } —
+        // nilai ABSOLUT, bukan delta. Tanpa SELECT ini, stokBaru === undefined
+        // dan view akan set qty_stok = undefined → tampil 0.
+        const [stokRows] = await pool.query(
+            `SELECT id AS produkId, qty_stok AS stokBaru FROM produk WHERE id IN (?)`,
+            [produkIds]
+        );
+
         wsService.pushAll('stok-global', {
             event:   'stock.updated',
-            updates: stokUpdates,
+            updates: stokRows.map(r => ({ produkId: r.produkId, stokBaru: r.stokBaru })),
         });
 
     } catch (err) {

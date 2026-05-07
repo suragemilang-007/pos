@@ -261,12 +261,29 @@ function handleWsEvent(data) {
     }
 }
 
-// Bridge untuk view yang memanggil window.showToast(msg, type) — signature berbeda
-// dari fungsi utama showToast(type, title, message).
-window.showToast = function(msg, type) {
-    const titleMap = { success: 'Berhasil', error: 'Gagal', info: 'Info', warning: 'Perhatian' };
-    showToast(type || 'info', titleMap[type] || 'Info', msg);
-};
+// Bridge: beberapa view menggunakan window.showToast(msg, type) — 2 argumen.
+// Halaman lain (create.blade.php, dll.) menggunakan showToast(type, title, msg) — 3 argumen.
+//
+// MASALAH REKURSI: window.showToast = ... menimpa nama global `showToast`,
+// sehingga jika bridge memanggil `showToast(...)` ia memanggil dirinya sendiri.
+// Solusi: tangkap referensi original ke `_origShowToast` sebelum ditimpa,
+// lalu deteksi jumlah argumen untuk memilih signature yang tepat.
+(function () {
+    const _orig = showToast;   // tangkap fungsi 3-argumen SEBELUM window.showToast menimpanya
+
+    window.showToast = function (first, second, third) {
+        if (third !== undefined) {
+            // Dipanggil dengan 3 argumen: (type, title, message) — pola lama, teruskan langsung
+            _orig(first, second, third);
+        } else {
+            // Dipanggil dengan 1–2 argumen: (msg, type?) — pola 2-argumen dari views baru
+            const msg      = first;
+            const type     = second || 'info';
+            const titleMap = { success: 'Berhasil', error: 'Gagal', info: 'Info', warning: 'Perhatian' };
+            _orig(type, titleMap[type] || 'Info', msg);
+        }
+    };
+})();
 
 // ── Toast (§10.6G) ────────────────────────────────────────────────────────────
 function showToast(type, title, message) {

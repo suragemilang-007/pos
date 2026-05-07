@@ -6,8 +6,8 @@
 @section('content')
 <div class="space-y-6">
 
-    {{-- Aksi cepat (§10.6A) --}}
-    <div class="flex items-center gap-3">
+    {{-- Aksi cepat --}}
+    <div class="flex items-center gap-3 flex-wrap">
         <a href="/gudang/pembelian/create"
             class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -21,6 +21,24 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
             </svg>
             Lihat Stok
+        </a>
+        {{-- Shortcut Bayar Hutang --}}
+        <a href="/gudang/hutang"
+            class="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
+            </svg>
+            Bayar Hutang
+        </a>
+        {{-- Shortcut Penyesuaian Stok --}}
+        <a href="/gudang/penyesuaian-stok"
+            class="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/>
+            </svg>
+            Penyesuaian Stok
         </a>
     </div>
 
@@ -62,6 +80,31 @@
             <p id="hint-po-pending" class="hidden mt-1 text-xs text-amber-600 dark:text-amber-400">Consumer sedang memproses</p>
         </div>
     </div>
+
+    {{-- Widget Hutang Jatuh Tempo --}}
+    <a id="widget-hutang" href="/gudang/hutang"
+        class="hidden items-center gap-4 p-4 rounded-xl border shadow-sm transition-colors
+               bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700
+               hover:bg-gray-50 dark:hover:bg-gray-700/50 group">
+        <div id="widget-hutang-icon"
+            class="w-10 h-10 rounded-full flex items-center justify-center shrink-0
+                   bg-gray-100 dark:bg-gray-700">
+            <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+        </div>
+        <div class="flex-1 min-w-0">
+            <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                Hutang Jatuh Tempo &lt; 3 Hari
+            </p>
+            <p id="widget-hutang-val" class="text-2xl font-bold font-mono text-gray-900 dark:text-gray-100 mt-0.5">—</p>
+        </div>
+        <svg class="w-5 h-5 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300 shrink-0 transition-colors"
+            fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+        </svg>
+    </a>
 
     {{-- Tabel 5 pembelian terakhir --}}
     <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
@@ -167,9 +210,50 @@ function renderTabel(rows) {
         </tr>`).join('');
 }
 
+// ── Hutang jatuh tempo widget ──────────────────────────────────────────────────
+async function loadHutangStat() {
+    try {
+        // Gunakan limit=1 — hanya butuh ringkasan, bukan daftar penuh
+        const { data } = await axios.get('/api/gudang/hutang?limit=1');
+        const n = data.ringkasan?.hutang_jatuh_tempo_3hari ?? 0;
+
+        const widget  = document.getElementById('widget-hutang');
+        const valEl   = document.getElementById('widget-hutang-val');
+        const iconEl  = document.getElementById('widget-hutang-icon');
+
+        valEl.textContent = n + ' PO';
+
+        if (n > 0) {
+            // Merah + background merah — perlu perhatian segera
+            widget.classList.remove(
+                'bg-white', 'dark:bg-gray-800', 'border-gray-200', 'dark:border-gray-700'
+            );
+            widget.classList.add(
+                'bg-red-50', 'dark:bg-red-900/20',
+                'border-red-300', 'dark:border-red-700'
+            );
+            iconEl.classList.remove('bg-gray-100', 'dark:bg-gray-700');
+            iconEl.classList.add('bg-red-100', 'dark:bg-red-900/40');
+            iconEl.querySelector('svg').classList.replace('text-gray-400', 'text-red-600');
+            iconEl.querySelector('svg').classList.add('dark:text-red-400');
+            valEl.classList.replace('text-gray-900', 'text-red-700');
+            valEl.classList.replace('dark:text-gray-100', 'dark:text-red-300');
+        }
+
+        // Tampilkan widget (awalnya hidden)
+        widget.classList.remove('hidden');
+        widget.classList.add('flex');
+    } catch (_) {
+        // Gagal load hutang tidak harus mengganggu dashboard — sembunyikan saja widget
+    }
+}
+
 // WebSocket: refresh saat purchase.completed (stok berubah setelah restock)
 document.addEventListener('stok-updated', loadRingkasan);
 
-document.addEventListener('DOMContentLoaded', loadRingkasan);
+document.addEventListener('DOMContentLoaded', () => {
+    loadRingkasan();
+    loadHutangStat();
+});
 </script>
 @endpush

@@ -12,7 +12,7 @@
 
     {{-- ── Tab Navigation ──────────────────────────────────────────────────── --}}
     <div class="bg-gray-100 dark:bg-gray-700/50 p-1 rounded-xl flex gap-1 flex-wrap sm:flex-nowrap">
-        @foreach([['penjualan','Penjualan'],['stok','Stok'],['pembelian','Pembelian']] as [$key,$label])
+        @foreach([['penjualan','Penjualan'],['stok','Stok'],['pembelian','Pembelian'],['hutang','Hutang Dagang'],['penyesuaian-stok','Penyesuaian Stok']] as [$key,$label])
         <button id="tab-btn-{{ $key }}" onclick="switchTab('{{ $key }}')"
             class="tab-btn flex-1 px-3 py-2 text-sm font-medium rounded-lg transition-all focus:outline-none whitespace-nowrap">
             {{ $label }}
@@ -317,6 +317,139 @@
         </div>
     </div>
 
+    {{-- ══════════════════════════════════════════════════════════════════════
+         TAB HUTANG DAGANG
+    ═══════════════════════════════════════════════════════════════════════ --}}
+    <div id="panel-hutang" class="hidden space-y-5">
+        <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-4 flex justify-between items-center">
+            <h3 class="font-medium text-gray-900 dark:text-gray-100">Laporan Hutang Dagang</h3>
+            <button id="btn-gen-hutang" onclick="generateHutang()"
+                class="inline-flex items-center gap-2 px-5 py-2 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 shrink-0 disabled:opacity-50">
+                <svg id="spin-hutang" class="hidden animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                </svg>
+                Generate
+            </button>
+        </div>
+
+        <div id="hasil-hutang" class="hidden space-y-5">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-5">
+                    <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Total Hutang</p>
+                    <p id="hutang-total" class="mt-1.5 text-2xl font-bold font-mono text-red-600 dark:text-red-400">—</p>
+                </div>
+                <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-5">
+                    <p class="text-xs font-medium text-gray-500 dark:text-gray-400">PO Menunggak</p>
+                    <p id="hutang-menunggak" class="mt-1.5 text-2xl font-bold font-mono text-gray-900 dark:text-gray-100">—</p>
+                </div>
+            </div>
+
+            <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                    <h3 class="text-sm font-semibold text-gray-800 dark:text-gray-200">Rekap Hutang per Supplier</h3>
+                    <button onclick="exportLaporan('hutang','excel')"
+                        class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30 rounded-lg transition-colors">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                        Export CSV
+                    </button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm text-left">
+                        <thead>
+                            <tr class="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50">
+                                <th class="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Nama</th>
+                                <th class="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase text-center">Jumlah PO</th>
+                                <th class="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase text-right">Total Hutang</th>
+                                <th class="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase text-right">Sudah Bayar</th>
+                                <th class="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase text-right">Sisa</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody-hutang" class="divide-y divide-gray-200 dark:divide-gray-700"></tbody>
+                        <tfoot id="tfoot-hutang" class="bg-gray-50 dark:bg-gray-700/50 border-t-2 border-gray-300 dark:border-gray-600"></tfoot>
+                    </table>
+                    <p id="empty-hutang-tbl" class="hidden px-6 py-8 text-center text-sm text-gray-400 dark:text-gray-500">Tidak ada hutang tersisa.</p>
+                </div>
+            </div>
+        </div>
+        <div id="empty-hutang" class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm px-6 py-16 text-center">
+            <p class="text-sm text-gray-500 dark:text-gray-400">Klik Generate untuk melihat laporan hutang.</p>
+        </div>
+    </div>
+
+    {{-- ══════════════════════════════════════════════════════════════════════
+         TAB PENYESUAIAN STOK
+    ═══════════════════════════════════════════════════════════════════════ --}}
+    <div id="panel-penyesuaian-stok" class="hidden space-y-5">
+        <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-4">
+            <div class="flex flex-col sm:flex-row gap-3 items-end">
+                <div class="space-y-1 flex-1">
+                    <label class="block text-xs font-medium text-gray-600 dark:text-gray-400">Dari Tanggal</label>
+                    <input id="sesuai-dari" type="date" class="block w-full px-3 py-2 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors">
+                </div>
+                <div class="space-y-1 flex-1">
+                    <label class="block text-xs font-medium text-gray-600 dark:text-gray-400">Sampai Tanggal</label>
+                    <input id="sesuai-sampai" type="date" class="block w-full px-3 py-2 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors">
+                </div>
+                <button id="btn-gen-sesuai" onclick="generatePenyesuaianStok()"
+                    class="inline-flex items-center gap-2 px-5 py-2 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 shrink-0 disabled:opacity-50">
+                    <svg id="spin-sesuai" class="hidden animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                    </svg>
+                    Generate
+                </button>
+            </div>
+        </div>
+
+        <div id="hasil-sesuai" class="hidden space-y-5">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-5 text-center">
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Rusak</p>
+                    <p id="sesuai-rusak" class="mt-1 text-2xl font-bold font-mono text-amber-600 dark:text-amber-400">—</p>
+                </div>
+                <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-5 text-center">
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Hilang</p>
+                    <p id="sesuai-hilang" class="mt-1 text-2xl font-bold font-mono text-red-600 dark:text-red-400">—</p>
+                </div>
+                <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-5 text-center">
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Expired</p>
+                    <p id="sesuai-expired" class="mt-1 text-2xl font-bold font-mono text-orange-600 dark:text-orange-400">—</p>
+                </div>
+            </div>
+
+            <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                    <h3 class="text-sm font-semibold text-gray-800 dark:text-gray-200">Riwayat Penyesuaian Stok</h3>
+                    <button onclick="exportLaporan('penyesuaian-stok','excel')"
+                        class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30 rounded-lg transition-colors">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                        Export CSV
+                    </button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm text-left">
+                        <thead>
+                            <tr class="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50">
+                                <th class="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Tanggal</th>
+                                <th class="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Produk</th>
+                                <th class="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Tipe</th>
+                                <th class="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase text-right">Qty</th>
+                                <th class="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Keterangan</th>
+                                <th class="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Admin</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody-sesuai" class="divide-y divide-gray-200 dark:divide-gray-700"></tbody>
+                    </table>
+                    <p id="empty-sesuai-tbl" class="hidden px-6 py-8 text-center text-sm text-gray-400 dark:text-gray-500">Tidak ada penyesuaian stok pada periode ini.</p>
+                </div>
+            </div>
+        </div>
+        <div id="empty-sesuai" class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm px-6 py-16 text-center">
+            <p class="text-sm text-gray-500 dark:text-gray-400">Klik Generate untuk melihat laporan penyesuaian stok.</p>
+        </div>
+    </div>
+
 
 
 </div>
@@ -330,11 +463,12 @@ let chartOmzet   = null;
 let chartMetode  = null;
 let lastJualDari = ''; let lastJualSampai = '';
 let lastBeliDari = ''; let lastBeliSampai = '';
+let lastSesuaiDari = ''; let lastSesuaiSampai = '';
 
 // ── Tab ───────────────────────────────────────────────────────────────────────
 function switchTab(tab) {
     activeTab = tab;
-    ['penjualan','stok','pembelian'].forEach(t => {
+    ['penjualan','stok','pembelian','hutang','penyesuaian-stok'].forEach(t => {
         const btn   = document.getElementById('tab-btn-' + t);
         const panel = document.getElementById('panel-' + t);
         const isActive = t === tab;
@@ -352,10 +486,10 @@ function defaultDates() {
     const today    = new Date().toISOString().slice(0, 10);
     const firstDay = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10);
 
-    ['jual-dari','beli-dari'].forEach(id => {
+    ['jual-dari','beli-dari','sesuai-dari'].forEach(id => {
         document.getElementById(id).value = firstDay;
     });
-    ['jual-sampai','beli-sampai'].forEach(id => {
+    ['jual-sampai','beli-sampai','sesuai-sampai'].forEach(id => {
         document.getElementById(id).value = today;
     });
 }
@@ -700,6 +834,143 @@ function renderTabelPembelian(rows) {
         </tr>`).join('');
 }
 
+// ── TAB HUTANG DAGANG ─────────────────────────────────────────────────────────
+async function generateHutang() {
+    setLoading('hutang', true);
+    try {
+        const { data } = await axios.get('/api/owner/laporan/hutang');
+        const d = data.data;
+
+        document.getElementById('empty-hutang').classList.add('hidden');
+        document.getElementById('hasil-hutang').classList.remove('hidden');
+
+        // API mengembalikan d.summary (bukan d.ringkasan)
+        document.getElementById('hutang-total').textContent    = 'Rp ' + fmt(d.summary?.grand_total_hutang ?? 0);
+        document.getElementById('hutang-menunggak').textContent = fmt(d.summary?.po_terlewat ?? 0) + ' PO';
+
+        renderTabelHutang(d.per_supplier ?? [], d.summary?.grand_total_hutang ?? 0);
+    } catch (err) {
+        showToast('error', 'Gagal generate laporan hutang', err.response?.data?.message || '');
+    } finally {
+        setLoading('hutang', false);
+    }
+}
+
+function renderTabelHutang(rows, grandTotalSisa) {
+    const tbody = document.getElementById('tbody-hutang');
+    const tfoot = document.getElementById('tfoot-hutang');
+    const empty = document.getElementById('empty-hutang-tbl');
+
+    if (!rows.length) {
+        tbody.innerHTML = '';
+        tfoot.innerHTML = '';
+        empty.classList.remove('hidden');
+        return;
+    }
+    empty.classList.add('hidden');
+
+    // per_supplier fields: nama_supplier, jumlah_po, grand_total_po, sudah_dibayar, total_sisa
+    tbody.innerHTML = rows.map(s => `
+        <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+            <td class="px-4 py-3 text-sm font-medium text-gray-900 dark:text-gray-100">${esc(s.nama_supplier)}</td>
+            <td class="px-4 py-3 text-center font-mono text-sm text-gray-600 dark:text-gray-400">${fmt(s.jumlah_po)}</td>
+            <td class="px-4 py-3 text-right font-mono text-sm text-gray-900 dark:text-gray-100">Rp ${fmt(s.grand_total_po)}</td>
+            <td class="px-4 py-3 text-right font-mono text-sm text-green-600 dark:text-green-400">Rp ${fmt(s.sudah_dibayar)}</td>
+            <td class="px-4 py-3 text-right font-mono text-sm font-semibold text-red-600 dark:text-red-400">Rp ${fmt(s.total_sisa)}</td>
+        </tr>`).join('');
+
+    tfoot.innerHTML = `
+        <tr>
+            <td colspan="4" class="px-4 py-3 text-sm font-semibold text-gray-700 dark:text-gray-300 text-right">Grand Total Sisa Hutang</td>
+            <td class="px-4 py-3 text-right font-mono text-sm font-bold text-red-600 dark:text-red-400">Rp ${fmt(grandTotalSisa)}</td>
+        </tr>`;
+}
+
+// ── TAB PENYESUAIAN STOK ──────────────────────────────────────────────────────
+async function generatePenyesuaianStok() {
+    const dari   = document.getElementById('sesuai-dari').value;
+    const sampai = document.getElementById('sesuai-sampai').value;
+    if (!dari || !sampai) { showToast('warning', 'Filter diperlukan', 'Pilih rentang tanggal terlebih dahulu'); return; }
+
+    lastSesuaiDari = dari; lastSesuaiSampai = sampai;
+    setLoading('sesuai', true);
+
+    try {
+        const { data } = await axios.get(`/api/owner/laporan/penyesuaian-stok?dari=${dari}&sampai=${sampai}`);
+        const d = data.data;
+
+        document.getElementById('empty-sesuai').classList.add('hidden');
+        document.getElementById('hasil-sesuai').classList.remove('hidden');
+
+        // API mengembalikan d.per_tipe.{tipe}.jumlah_item (bukan d.ringkasan)
+        const pt = d.per_tipe ?? {};
+        document.getElementById('sesuai-rusak').textContent   = fmt(pt.barang_rusak?.jumlah_item   ?? 0) + ' item';
+        document.getElementById('sesuai-hilang').textContent  = fmt(pt.barang_hilang?.jumlah_item  ?? 0) + ' item';
+        document.getElementById('sesuai-expired').textContent = fmt(pt.barang_expired?.jumlah_item ?? 0) + ' item';
+
+        // d.daftar bukan d.riwayat
+        renderTabelPenyesuaian(d.daftar ?? []);
+    } catch (err) {
+        showToast('error', 'Gagal generate laporan', err.response?.data?.message || '');
+    } finally {
+        setLoading('sesuai', false);
+    }
+}
+
+// Peta tipe → badge (sesuai TIPE_CONFIG di penyesuaian-stok/index.blade.php)
+const TIPE_BADGE = {
+    barang_rusak:   { label: 'Rusak',      cls: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400' },
+    barang_hilang:  { label: 'Hilang',     cls: 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400' },
+    barang_expired: { label: 'Expired',    cls: 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400' },
+    koreksi_plus:   { label: '+ Koreksi',  cls: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' },
+    koreksi_minus:  { label: '− Koreksi',  cls: 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400' },
+};
+
+function renderTabelPenyesuaian(rows) {
+    const tbody = document.getElementById('tbody-sesuai');
+    const empty = document.getElementById('empty-sesuai-tbl');
+
+    if (!rows.length) {
+        tbody.innerHTML = '';
+        empty.classList.remove('hidden');
+        return;
+    }
+    empty.classList.add('hidden');
+
+    const KURANG = new Set(['barang_rusak', 'barang_hilang', 'barang_expired', 'koreksi_minus']);
+
+    tbody.innerHTML = rows.map(r => {
+        const badge = TIPE_BADGE[r.tipe] ?? { label: r.tipe, cls: 'bg-gray-100 text-gray-600' };
+        const isKurang = KURANG.has(r.tipe);
+        const qtyColor = isKurang ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400';
+        const sign     = isKurang ? '−' : '+';
+        // API mengembalikan r.tanggal (bukan r.tanggal_penyesuaian)
+        const tgl = r.tanggal
+            ? new Date(r.tanggal).toLocaleString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+            : '—';
+
+        return `
+        <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+            <td class="px-4 py-3 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">${tgl}</td>
+            <td class="px-4 py-3">
+                <p class="text-sm font-medium text-gray-900 dark:text-gray-100">${esc(r.nama_produk)}</p>
+                <p class="text-xs font-mono text-gray-400 dark:text-gray-500">${esc(r.kode_produk ?? '')}</p>
+            </td>
+            <td class="px-4 py-3">
+                <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${badge.cls}">${badge.label}</span>
+            </td>
+            <td class="px-4 py-3 text-right font-mono text-sm font-semibold ${qtyColor}">
+                ${sign}${fmt(r.qty_satuan_dasar)}
+                <span class="text-xs font-normal text-gray-400 ml-0.5">${esc(r.satuan_dasar ?? '')}</span>
+            </td>
+            <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400 max-w-[200px]">
+                <span class="line-clamp-2" title="${esc(r.keterangan ?? '')}">${esc(r.keterangan ?? '')}</span>
+            </td>
+            <td class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">${esc(r.nama_admin ?? '—')}</td>
+        </tr>`;
+    }).join('');
+}
+
 // ── Export ────────────────────────────────────────────────────────────────────
 async function exportLaporan(jenis, format) {
     let params = new URLSearchParams({ format });
@@ -710,6 +981,9 @@ async function exportLaporan(jenis, format) {
     } else if (jenis === 'pembelian') {
         if (!lastBeliDari)  { showToast('warning', 'Generate dahulu', 'Klik Generate sebelum export'); return; }
         params.set('dari', lastBeliDari);  params.set('sampai', lastBeliSampai);
+    } else if (jenis === 'penyesuaian-stok') {
+        if (!lastSesuaiDari) { showToast('warning', 'Generate dahulu', 'Klik Generate sebelum export'); return; }
+        params.set('dari', lastSesuaiDari); params.set('sampai', lastSesuaiSampai);
     } else if (jenis === 'stok') {
         const kat = document.getElementById('stok-kategori').value;
         if (kat) params.set('kategori_id', kat);
