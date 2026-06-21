@@ -6,7 +6,8 @@
       "Bash(echo \"JWT_SECRET=$\\(openssl rand -hex 32\\)\")",
       "Bash(curl -s -X POST http://localhost/api/auth/login -H 'Content-Type: application/json' -d '{\"username\":\"Ignas007\",\"password\":\"Indonesia123\"}')",
       "Bash(curl -s -X POST http://localhost/api/auth/login -H 'Content-Type: application/json' -d '{\"username\":\"Ignas007\",\"password\":\"passwordsalah\"}')",
-      "Bash(curl -s -X POST http://localhost/api/auth/login -H 'Content-Type: application/json' -d '{\"username\":\"kasir1\",\"password\":\"kasir123\"}')"
+      "Bash(curl -s -X POST http://localhost/api/auth/login -H 'Content-Type: application/json' -d '{\"username\":\"kasir1\",\"password\":\"kasir123\"}')",
+      "WebSearch"
     ]
   }
 }

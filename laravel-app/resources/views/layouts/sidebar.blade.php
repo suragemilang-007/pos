@@ -29,7 +29,7 @@
 
         {{-- ═══════════════════════════════════════════════════════════
              GRUP: TRANSAKSI — kasir & owner
-             Termasuk: dashboard kasir, transaksi baru, retur penjualan,
+             Termasuk: dashboard kasir, transaksi baru,
                        pantau stok, data customer
         ════════════════════════════════════════════════════════════ --}}
         <div class="nav-group" data-roles="kasir,owner">
@@ -44,15 +44,6 @@
                         d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
                 </svg>
                 Kasir
-            </a>
-
-            <a href="/kasir/retur-penjualan"
-                class="nav-link flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-colors text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700/50">
-                <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/>
-                </svg>
-                Retur Penjualan
             </a>
 
             <a href="/stok"
@@ -73,14 +64,6 @@
                 Data Customer
             </a>
 
-            <a href="/kasir/void-transaksi"
-                class="nav-link flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-colors text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700/50">
-                <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
-                </svg>
-                Void Transaksi
-            </a>
         </div>
 
         {{-- ═══════════════════════════════════════════════════════════
@@ -179,12 +162,30 @@
 
         {{-- ═══════════════════════════════════════════════════════════
              GRUP: MANAJEMEN — owner saja
-             Termasuk: laporan, kelola user
+             Termasuk: retur penjualan, void transaksi, laporan, kelola user
         ════════════════════════════════════════════════════════════ --}}
         <div class="nav-group mt-2" data-roles="owner">
             <p class="px-3 pt-3 pb-1 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
                 Manajemen
             </p>
+
+            <a href="/kasir/retur-penjualan"
+                class="nav-link flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-colors text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700/50">
+                <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/>
+                </svg>
+                Retur Penjualan
+            </a>
+
+            <a href="/kasir/void-transaksi"
+                class="nav-link flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-colors text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700/50">
+                <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
+                </svg>
+                Void Transaksi
+            </a>
 
             <a href="/laporan"
                 class="nav-link flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-colors text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700/50">

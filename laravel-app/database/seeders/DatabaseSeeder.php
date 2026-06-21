@@ -13,6 +13,13 @@ class DatabaseSeeder extends Seeder
             RoleSeeder::class,
             UserSeeder::class,
             KategoriProdukSeeder::class,
+            ProdukSeeder::class,          // FK kategori_id → kategori_produk (Mie & Pasta)
+            MinumanRentengSeeder::class,  // FK kategori_id → kategori_produk (Minuman Renteng)
+            CustomerSeeder::class,        // Data pelanggan toko
+            AirMineralSeeder::class,        // FK kategori_id → Minuman Botol, Gelas Cup, Galon
+            NutrisariPopIceSeeder::class,  // FK kategori_id → Minuman Renteng
+            MinyakGorengSeeder::class,    // FK kategori_id → Minyak Goreng
+            RokokSeeder::class,          // FK kategori_id → Rokok
         ]);
     }
 }

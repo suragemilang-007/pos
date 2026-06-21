@@ -1,4 +1,4 @@
-'use strict';
+"use strict";
 
 /**
  * consumers/transactionConsumer.js
@@ -13,7 +13,7 @@
  * 4. Push notifikasi real-time ke kasir dan semua terminal via WebSocket
  */
 
-const { TOPICS } = require('../config/kafka');
+const { TOPICS } = require("../config/kafka");
 
 // ─────────────────────────────────────────────────────────────────────────────
 // FUNGSI PENDUKUNG
@@ -44,48 +44,49 @@ const { TOPICS } = require('../config/kafka');
  * @returns {Promise<{valid: boolean, message: string}>}
  */
 async function validateStock(pool, items) {
-    for (const item of items) {
-        // Konversi ke satuan dasar — KRITIS
-        // Contoh: qty=2 karton, isiSatuan=96 → butuh 192 pcs dari stok
-        const qtyDibutuhkan = item.qty * item.isiSatuan;
+  for (const item of items) {
+    // Konversi ke satuan dasar — KRITIS
+    // Contoh: qty=2 karton, isiSatuan=96 → butuh 192 pcs dari stok
+    const qtyDibutuhkan = item.qty * item.isiSatuan;
 
-        const [rows] = await pool.query(
-            `SELECT qty_stok, nama_produk
+    const [rows] = await pool.query(
+      `SELECT qty_stok, nama_produk
              FROM   produk
              WHERE  id = ? AND status = 'aktif'`,
-            [item.produkId]
-        );
+      [item.produkId],
+    );
 
-        if (rows.length === 0) {
-            return {
-                valid:   false,
-                message: `Produk ID ${item.produkId} tidak ditemukan atau sudah tidak aktif`,
-            };
-        }
-
-        const { qty_stok, nama_produk } = rows[0];
-
-        // Catat stok saat ini — dipakai untuk menghitung stokBaru di WebSocket push
-        // tanpa perlu SELECT lagi setelah UPDATE (hemat satu round-trip DB)
-        item._qtySaatIni    = qty_stok;
-        item._qtyDibutuhkan = qtyDibutuhkan;
-        item._namaProduk    = nama_produk;
-
-        if (qty_stok < qtyDibutuhkan) {
-            // Hitung stok tersisa dalam satuan yang sama dengan yang diminta kasir
-            const stokDalamSatuan = Math.floor(qty_stok / item.isiSatuan);
-            const satuanLabel     = item.namaSatuan || 'unit';
-
-            return {
-                valid:   false,
-                message: `Stok ${nama_produk} tidak mencukupi ` +
-                         `(tersedia: ${stokDalamSatuan} ${satuanLabel}, ` +
-                         `dibutuhkan: ${item.qty} ${satuanLabel})`,
-            };
-        }
+    if (rows.length === 0) {
+      return {
+        valid: false,
+        message: `Produk ID ${item.produkId} tidak ditemukan atau sudah tidak aktif`,
+      };
     }
 
-    return { valid: true, message: '' };
+    const { qty_stok, nama_produk } = rows[0];
+
+    // Catat stok saat ini — dipakai untuk menghitung stokBaru di WebSocket push
+    // tanpa perlu SELECT lagi setelah UPDATE (hemat satu round-trip DB)
+    item._qtySaatIni = qty_stok;
+    item._qtyDibutuhkan = qtyDibutuhkan;
+    item._namaProduk = nama_produk;
+
+    if (qty_stok < qtyDibutuhkan) {
+      // Hitung stok tersisa dalam satuan yang sama dengan yang diminta kasir
+      const stokDalamSatuan = Math.floor(qty_stok / item.isiSatuan);
+      const satuanLabel = item.namaSatuan || "unit";
+
+      return {
+        valid: false,
+        message:
+          `Stok ${nama_produk} tidak mencukupi ` +
+          `(tersedia: ${stokDalamSatuan} ${satuanLabel}, ` +
+          `dibutuhkan: ${item.qty} ${satuanLabel})`,
+      };
+    }
+  }
+
+  return { valid: true, message: "" };
 }
 
 /**
@@ -93,24 +94,26 @@ async function validateStock(pool, items) {
  * Dipakai di dua tempat: stok tidak cukup + error di tengah transaksi DB.
  */
 async function markFailed(pool, transaksiId, userId, message, wsService) {
-    try {
-        await pool.query(
-            `UPDATE transaksi SET status = 'FAILED' WHERE id = ?`,
-            [transaksiId]
-        );
-    } catch (err) {
-        // Jika UPDATE ini pun gagal, tetap lanjutkan untuk push WS
-        console.error(`[TRX CONSUMER] Gagal UPDATE status FAILED transaksi ${transaksiId}:`, err.message);
-    }
+  try {
+    await pool.query(`UPDATE transaksi SET status = 'FAILED' WHERE id = ?`, [
+      transaksiId,
+    ]);
+  } catch (err) {
+    // Jika UPDATE ini pun gagal, tetap lanjutkan untuk push WS
+    console.error(
+      `[TRX CONSUMER] Gagal UPDATE status FAILED transaksi ${transaksiId}:`,
+      err.message,
+    );
+  }
 
-    wsService.push(`user-${userId}`, {
-        event:       'transaction.failed',
-        transaksiId: transaksiId,
-        status:      'FAILED',
-        message:     message,
-    });
+  wsService.push(`user-${userId}`, {
+    event: "transaction.failed",
+    transaksiId: transaksiId,
+    status: "FAILED",
+    message: message,
+  });
 
-    console.log(`[TRX CONSUMER] Transaksi ${transaksiId} → FAILED | ${message}`);
+  console.log(`[TRX CONSUMER] Transaksi ${transaksiId} → FAILED | ${message}`);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -125,119 +128,116 @@ async function markFailed(pool, transaksiId, userId, message, wsService) {
  * @param {object}  wsService   - { push, pushAll }
  */
 async function processTransaction(event, pool, wsService) {
-    const { transaksiId, items, userId } = event;
+  const { transaksiId, items, userId } = event;
 
-    // ── Langkah 2-3: Validasi stok semua item ────────────────────────────────
-    console.log(`[TRX CONSUMER] Memvalidasi stok untuk transaksi ${transaksiId} (${items.length} item)...`);
+  // ── Langkah 2-3: Validasi stok semua item ────────────────────────────────
+  console.log(
+    `[TRX CONSUMER] Memvalidasi stok untuk transaksi ${transaksiId} (${items.length} item)...`,
+  );
 
-    let validation;
-    try {
-        validation = await validateStock(pool, items);
-    } catch (err) {
-        console.error(`[TRX CONSUMER] Error saat validasi stok transaksi ${transaksiId}:`, err.message);
-        await markFailed(pool, transaksiId, userId, 'Terjadi kesalahan sistem saat validasi stok', wsService);
-        return;
-    }
+  let validation;
+  try {
+    validation = await validateStock(pool, items);
+  } catch (err) {
+    console.error(
+      `[TRX CONSUMER] Error saat validasi stok transaksi ${transaksiId}:`,
+      err.message,
+    );
+    await markFailed(
+      pool,
+      transaksiId,
+      userId,
+      "Terjadi kesalahan sistem saat validasi stok",
+      wsService,
+    );
+    return;
+  }
 
-    // ── Langkah 4: Stok tidak mencukupi ──────────────────────────────────────
-    if (!validation.valid) {
-        await markFailed(pool, transaksiId, userId, validation.message, wsService);
-        return;
-    }
+  // ── Langkah 4: Stok tidak mencukupi ──────────────────────────────────────
+  if (!validation.valid) {
+    await markFailed(pool, transaksiId, userId, validation.message, wsService);
+    return;
+  }
+  const conn = await pool.getConnection();
 
-    // ── Langkah 5: Semua stok cukup — proses dengan DB transaction ───────────
+  try {
+    await conn.beginTransaction();
 
-    /**
-     * Mengapa menggunakan database transaction (BEGIN/COMMIT/ROLLBACK)?
-     *
-     * Ada N item dalam satu transaksi penjualan. Jika item ke-3 gagal di-UPDATE
-     * (misal: deadlock, koneksi putus), item ke-1 dan ke-2 sudah terlanjur dikurangi.
-     * Tanpa ROLLBACK, stok jadi tidak konsisten — ada stok yang berkurang tapi
-     * transaksi tidak tercatat COMPLETED.
-     *
-     * Dengan DB transaction:
-     * - Semua UPDATE stok + UPDATE status transaksi dijamin all-or-nothing
-     * - Jika salah satu gagal, semua perubahan dibatalkan secara atomik
-     * - Database kembali ke state sebelum transaksi dimulai
-     *
-     * Ini berbeda dari Kafka transaction — di sini kita berbicara tentang
-     * database ACID transaction, bukan Kafka exactly-once semantics.
-     */
-    const conn = await pool.getConnection();
+    const stokUpdates = []; // akumulasi untuk payload stock.updated WebSocket
 
-    try {
-        await conn.beginTransaction();
-
-        const stokUpdates = []; // akumulasi untuk payload stock.updated WebSocket
-
-        // ── 5b: Kurangi stok setiap item ────────────────────────────────────
-        for (const item of items) {
-            await conn.query(
-                `UPDATE produk
+    // ── 5b: Kurangi stok setiap item ────────────────────────────────────
+    for (const item of items) {
+      await conn.query(
+        `UPDATE produk
                  SET    qty_stok = qty_stok - ?
                  WHERE  id = ? AND status = 'aktif'`,
-                [item._qtyDibutuhkan, item.produkId]
-            );
+        [item._qtyDibutuhkan, item.produkId],
+      );
 
-            // Hitung stok baru untuk payload WebSocket
-            // Menggunakan nilai yang sudah direkam saat validasi — tidak perlu SELECT lagi
-            stokUpdates.push({
-                produkId: item.produkId,
-                stokBaru: item._qtySaatIni - item._qtyDibutuhkan,
-            });
-        }
-
-        // ── 5c: Update status transaksi ──────────────────────────────────────
-        await conn.query(
-            `UPDATE transaksi SET status = 'COMPLETED' WHERE id = ?`,
-            [transaksiId]
-        );
-
-        // ── 5d: Commit — semua perubahan permanen ────────────────────────────
-        await conn.commit();
-
-        console.log(`[TRX CONSUMER] Transaksi ${transaksiId} → COMPLETED`);
-
-        // ── 5e: Push notifikasi personal ke kasir ────────────────────────────
-        wsService.push(`user-${userId}`, {
-            event:       'transaction.completed',
-            transaksiId: transaksiId,
-            status:      'COMPLETED',
-            message:     'Transaksi berhasil diproses',
-        });
-
-        // ── 5f: Push update stok ke semua terminal ───────────────────────────
-        // Semua kasir yang sedang aktif akan melihat stok terbaru secara real-time
-        // tanpa perlu refresh halaman
-        wsService.pushAll('stok-global', {
-            event:   'stock.updated',
-            updates: stokUpdates,
-        });
-
-    } catch (err) {
-        // ── Error di tengah DB transaction → ROLLBACK ────────────────────────
-        console.error(`[TRX CONSUMER] Error saat proses transaksi ${transaksiId}:`, err.message);
-
-        try {
-            await conn.rollback();
-            console.log(`[TRX CONSUMER] Rollback berhasil untuk transaksi ${transaksiId}`);
-        } catch (rollbackErr) {
-            console.error(`[TRX CONSUMER] Rollback gagal transaksi ${transaksiId}:`, rollbackErr.message);
-        }
-
-        // Tandai FAILED menggunakan pool (bukan conn yang sudah error)
-        await markFailed(
-            pool,
-            transaksiId,
-            userId,
-            'Terjadi kesalahan sistem saat memproses transaksi',
-            wsService
-        );
-
-    } finally {
-        // WAJIB release — tanpa ini koneksi tidak kembali ke pool dan pool akan habis
-        conn.release();
+      // Hitung stok baru untuk payload WebSocket
+      // Menggunakan nilai yang sudah direkam saat validasi — tidak perlu SELECT lagi
+      stokUpdates.push({
+        produkId: item.produkId,
+        stokBaru: item._qtySaatIni - item._qtyDibutuhkan,
+      });
     }
+
+    // ── 5c: Update status transaksi ──────────────────────────────────────
+    await conn.query(`UPDATE transaksi SET status = 'COMPLETED' WHERE id = ?`, [
+      transaksiId,
+    ]);
+
+    // ── 5d: Commit — semua perubahan permanen ────────────────────────────
+    await conn.commit();
+
+    console.log(`[TRX CONSUMER] Transaksi ${transaksiId} → COMPLETED`);
+
+    // ── 5e: Push notifikasi personal ke kasir ────────────────────────────
+    wsService.push(`user-${userId}`, {
+      event: "transaction.completed",
+      transaksiId: transaksiId,
+      status: "COMPLETED",
+      message: "Transaksi berhasil diproses",
+    });
+
+    // ── 5f: Push update stok ke semua terminal ───────────────────────────
+    // Semua kasir yang sedang aktif akan melihat stok terbaru secara real-time
+    // tanpa perlu refresh halaman
+    wsService.pushAll("stok-global", {
+      event: "stock.updated",
+      updates: stokUpdates,
+    });
+  } catch (err) {
+    // ── Error di tengah DB transaction → ROLLBACK ────────────────────────
+    console.error(
+      `[TRX CONSUMER] Error saat proses transaksi ${transaksiId}:`,
+      err.message,
+    );
+
+    try {
+      await conn.rollback();
+      console.log(
+        `[TRX CONSUMER] Rollback berhasil untuk transaksi ${transaksiId}`,
+      );
+    } catch (rollbackErr) {
+      console.error(
+        `[TRX CONSUMER] Rollback gagal transaksi ${transaksiId}:`,
+        rollbackErr.message,
+      );
+    }
+
+    // Tandai FAILED menggunakan pool (bukan conn yang sudah error)
+    await markFailed(
+      pool,
+      transaksiId,
+      userId,
+      "Terjadi kesalahan sistem saat memproses transaksi",
+      wsService,
+    );
+  } finally {
+    // WAJIB release — tanpa ini koneksi tidak kembali ke pool dan pool akan habis
+    conn.release();
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -253,51 +253,61 @@ async function processTransaction(event, pool, wsService) {
  * @returns {Promise<import('kafkajs').Consumer>}
  */
 async function start(kafka, pool, wsService) {
-    const consumer = kafka.consumer({ groupId: 'pos-transaction-group' });
+  const consumer = kafka.consumer({ groupId: "pos-transaction-group" });
 
-    await consumer.connect();
-    await consumer.subscribe({ topic: TOPICS.TRANSACTION, fromBeginning: false });
+  await consumer.connect();
+  await consumer.subscribe({ topic: TOPICS.TRANSACTION, fromBeginning: false });
 
-    await consumer.run({
-        // eachMessage diproses secara sekuensial — satu per satu.
-        // Ini intentional untuk transaksi: kita tidak mau dua event yang
-        // mengkonsumsi produk sama diproses bersamaan (race condition stok).
-        eachMessage: async ({ message }) => {
-            let event;
+  await consumer.run({
+    // eachMessage diproses secara sekuensial — satu per satu.
+    // Ini intentional untuk transaksi: kita tidak mau dua event yang
+    // mengkonsumsi produk sama diproses bersamaan (race condition stok).
+    eachMessage: async ({ message }) => {
+      let event;
 
-            // ── Parse JSON — jangan crash consumer karena pesan corrupt ───────
-            try {
-                event = JSON.parse(message.value.toString());
-            } catch {
-                console.error('[TRX CONSUMER] Pesan tidak valid (bukan JSON), dilewati');
-                return; // offset tetap di-commit, pesan corrupt tidak bisa di-retry
-            }
+      // ── Parse JSON — jangan crash consumer karena pesan corrupt ───────
+      try {
+        event = JSON.parse(message.value.toString());
+      } catch {
+        console.error(
+          "[TRX CONSUMER] Pesan tidak valid (bukan JSON), dilewati",
+        );
+        return; // offset tetap di-commit, pesan corrupt tidak bisa di-retry
+      }
 
-            // ── Filter — hanya proses eventType yang relevan ─────────────────
-            if (event.eventType !== 'transaction.created') {
-                return;
-            }
+      // ── Filter — hanya proses eventType yang relevan ─────────────────
+      if (event.eventType !== "transaction.created") {
+        return;
+      }
 
-            if (!event.transaksiId || !Array.isArray(event.items) || !event.userId) {
-                console.error('[TRX CONSUMER] Payload tidak lengkap:', JSON.stringify(event));
-                return;
-            }
+      if (!event.transaksiId || !Array.isArray(event.items) || !event.userId) {
+        console.error(
+          "[TRX CONSUMER] Payload tidak lengkap:",
+          JSON.stringify(event),
+        );
+        return;
+      }
 
-            console.log(`[TRX CONSUMER] Memproses ${event.eventType} | transaksiId: ${event.transaksiId}`);
+      console.log(
+        `[TRX CONSUMER] Memproses ${event.eventType} | transaksiId: ${event.transaksiId}`,
+      );
 
-            try {
-                await processTransaction(event, pool, wsService);
-            } catch (err) {
-                // Error tidak ter-handle di processTransaction — log tapi tidak re-throw.
-                // Re-throw akan menyebabkan consumer crash dan restart dari offset yang sama
-                // (pesan yang sama diproses ulang terus — infinite loop).
-                console.error(`[TRX CONSUMER] Error tidak tertangani untuk transaksi ${event.transaksiId}:`, err);
-            }
-        },
-    });
+      try {
+        await processTransaction(event, pool, wsService);
+      } catch (err) {
+        // Error tidak ter-handle di processTransaction — log tapi tidak re-throw.
+        // Re-throw akan menyebabkan consumer crash dan restart dari offset yang sama
+        // (pesan yang sama diproses ulang terus — infinite loop).
+        console.error(
+          `[TRX CONSUMER] Error tidak tertangani untuk transaksi ${event.transaksiId}:`,
+          err,
+        );
+      }
+    },
+  });
 
-    console.log(`[TRX CONSUMER] Siap konsumsi topic: ${TOPICS.TRANSACTION}`);
-    return consumer;
+  console.log(`[TRX CONSUMER] Siap konsumsi topic: ${TOPICS.TRANSACTION}`);
+  return consumer;
 }
 
 module.exports = { start, processTransaction, validateStock };

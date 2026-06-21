@@ -16,7 +16,8 @@ class TransaksiController extends Controller
     public function __construct(
         private readonly TransaksiService $transaksiService,
         private readonly VoidTransaksiService $voidService
-    ) {}
+    ) {
+    }
 
     /**
      * GET /api/kasir/transaksi/cari?q={no_transaksi atau id} — dicari untuk keperluan retur.
@@ -39,7 +40,7 @@ class TransaksiController extends Controller
                 ->where('no_transaksi', $q)
                 ->first();
 
-        if (! $transaksi) {
+        if (!$transaksi) {
             return response()->json(['message' => 'Transaksi tidak ditemukan'], 404);
         }
 
@@ -51,19 +52,19 @@ class TransaksiController extends Controller
 
         return response()->json([
             'data' => [
-                'id'                => $transaksi->id,
-                'no_transaksi'      => $transaksi->no_transaksi,
+                'id' => $transaksi->id,
+                'no_transaksi' => $transaksi->no_transaksi,
                 'tanggal_transaksi' => $transaksi->tanggal_transaksi,
-                'total'             => (float) $transaksi->total,
-                'kasir'             => $transaksi->user?->nama,
-                'items'             => $transaksi->details->map(fn ($d) => [
-                    'produk_id'    => $d->produk_id,
-                    'nama_produk'  => $d->produk?->nama_produk,
-                    'nama_satuan'  => $d->nama_satuan,
-                    'isi_satuan'   => $d->isi_satuan,
-                    'qty'          => $d->qty,
+                'total' => (float) $transaksi->total,
+                'kasir' => $transaksi->user?->nama,
+                'items' => $transaksi->details->map(fn($d) => [
+                    'produk_id' => $d->produk_id,
+                    'nama_produk' => $d->produk?->nama_produk,
+                    'nama_satuan' => $d->nama_satuan,
+                    'isi_satuan' => $d->isi_satuan,
+                    'qty' => $d->qty,
                     'harga_satuan' => (float) $d->harga_satuan,
-                    'subtotal'     => (float) $d->subtotal,
+                    'subtotal' => (float) $d->subtotal,
                 ])->values(),
             ],
         ]);
@@ -76,7 +77,7 @@ class TransaksiController extends Controller
     public function ringkasan(Request $request): JsonResponse
     {
         $userId = $request->input('auth_user_id');
-        $today  = now()->toDateString();
+        $today = now()->toDateString();
 
         // Transaksi kasir ini hari ini (COMPLETED saja — yang pending/failed tidak dihitung)
         $transaksiHariIni = Transaksi::where('user_id', $userId)
@@ -102,19 +103,19 @@ class TransaksiController extends Controller
 
         return response()->json([
             'data' => [
-                'transaksi_hari_ini'  => $transaksiHariIni->count(),
-                'omzet_hari_ini'      => (float) $transaksiHariIni->sum('total'),
-                'stok_rendah'         => $stokRendah,
+                'transaksi_hari_ini' => $transaksiHariIni->count(),
+                'omzet_hari_ini' => (float) $transaksiHariIni->sum('total'),
+                'stok_rendah' => $stokRendah,
                 'transaksi_terakhir_jam' => $transaksiTerakhir
                     ? $transaksiTerakhir->tanggal_transaksi->format('H:i')
                     : null,
-                'transaksi_terakhir'  => $terakhir->map(fn ($t) => [
-                    'id'           => $t->id,
+                'transaksi_terakhir' => $terakhir->map(fn($t) => [
+                    'id' => $t->id,
                     'no_transaksi' => $t->no_transaksi,
-                    'waktu'        => $t->tanggal_transaksi?->format('H:i'),
-                    'total'        => (float) $t->total,
+                    'waktu' => $t->tanggal_transaksi?->format('H:i'),
+                    'total' => (float) $t->total,
                     'metode_bayar' => $t->metode_bayar,
-                    'status'       => $t->status,
+                    'status' => $t->status,
                 ])->values(),
             ],
         ]);
@@ -136,18 +137,18 @@ class TransaksiController extends Controller
             $v = $request->validated();
 
             $transaksi = $this->transaksiService->create(
-                items:       $v['items'],
-                customerId:  $v['customer_id'] ?? null,
-                userId:      $request->input('auth_user_id'),
-                bayar:       (float) $v['bayar'],
+                items: $v['items'],
+                customerId: $v['customer_id'] ?? null,
+                userId: $request->input('auth_user_id'),
+                bayar: (float) $v['bayar'],
                 metodeBayar: $v['metode_bayar']
             );
 
             return response()->json([
                 'id_transaksi' => $transaksi->id,
                 'no_transaksi' => $transaksi->no_transaksi,
-                'status'       => 'PENDING',
-                'message'      => 'Transaksi sedang diproses',
+                'status' => 'PENDING',
+                'message' => 'Transaksi sedang diproses',
             ], 202);
 
         } catch (\RuntimeException $e) {
@@ -177,13 +178,13 @@ class TransaksiController extends Controller
             'customer:id,nama',
         ])->find($id);
 
-        if (! $transaksi) {
+        if (!$transaksi) {
             return response()->json(['message' => 'Transaksi tidak ditemukan'], 404);
         }
 
         // Cek kepemilikan: kasir hanya boleh lihat transaksi miliknya sendiri
         // Owner boleh lihat semua
-        $authRole   = request()->input('auth_role_name');
+        $authRole = request()->input('auth_role_name');
         $authUserId = (int) request()->input('auth_user_id');
 
         if ($authRole !== 'owner' && $transaksi->user_id !== $authUserId) {
@@ -196,29 +197,29 @@ class TransaksiController extends Controller
 
         return response()->json([
             'data' => [
-                'id'                => $transaksi->id,
-                'no_transaksi'      => $transaksi->no_transaksi,
-                'status'            => $transaksi->status,
+                'id' => $transaksi->id,
+                'no_transaksi' => $transaksi->no_transaksi,
+                'status' => $transaksi->status,
                 'tanggal_transaksi' => $transaksi->tanggal_transaksi,
-                'total'             => (float) $transaksi->total,
-                'customer'          => $transaksi->customer
+                'total' => (float) $transaksi->total,
+                'customer' => $transaksi->customer
                     ? ['id' => $transaksi->customer->id, 'nama' => $transaksi->customer->nama]
                     : null,
-                'items' => $transaksi->details->map(fn ($d) => [
-                    'produk_id'    => $d->produk_id,
-                    'nama_produk'  => $d->produk?->nama_produk,
+                'items' => $transaksi->details->map(fn($d) => [
+                    'produk_id' => $d->produk_id,
+                    'nama_produk' => $d->produk?->nama_produk,
                     // Snapshot — tampilkan satuan yang dipakai saat transaksi terjadi
-                    'nama_satuan'  => $d->nama_satuan,
-                    'isi_satuan'   => $d->isi_satuan,
-                    'qty'          => $d->qty,
+                    'nama_satuan' => $d->nama_satuan,
+                    'isi_satuan' => $d->isi_satuan,
+                    'qty' => $d->qty,
                     'harga_satuan' => (float) $d->harga_satuan,
-                    'subtotal'     => (float) $d->subtotal,
-                    'is_bonus'     => (bool) $d->is_bonus,
+                    'subtotal' => (float) $d->subtotal,
+                    'is_bonus' => (bool) $d->is_bonus,
                 ])->values(),
                 // ── SD-17: Info void ─────────────────────────────────────────
-                'can_void'        => $voidInfo['eligible'],
+                'can_void' => $voidInfo['eligible'],
                 'sisa_waktu_void' => $voidInfo['sisa_detik'] ?? 0,
-                'void_reason'     => $voidInfo['reason'],
+                'void_reason' => $voidInfo['reason'],
             ],
         ], 200);
     }
@@ -236,7 +237,7 @@ class TransaksiController extends Controller
     {
         $transaksi = Transaksi::find($id);
 
-        if (! $transaksi) {
+        if (!$transaksi) {
             return response()->json(['message' => 'Transaksi tidak ditemukan'], 404);
         }
 
@@ -247,7 +248,7 @@ class TransaksiController extends Controller
         }
 
         // Cek kepemilikan — sama dengan show()
-        $authRole   = request()->input('auth_role_name');
+        $authRole = request()->input('auth_role_name');
         $authUserId = request()->input('auth_user_id');
 
         if ($authRole !== 'owner' && $transaksi->user_id !== $authUserId) {

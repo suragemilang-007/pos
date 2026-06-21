@@ -1,0 +1,140 @@
+{
+  "document": "Panduan Gaya Bahasa BAB IV Hasil dan Pembahasan — Skripsi SI/TI Indonesia",
+  "version": "1.0",
+  "context": "Sistem POS Toko Grosir dengan Event Streaming (Kafka + WebSocket + Laravel + Node.js)",
+
+  "core_principle": "BAB IV BUKAN ringkasan teori dan BUKAN daftar fitur. BAB IV adalah bukti bahwa sistem yang dirancang BEKERJA dan BERMAKNA — setiap paragraf harus mengandung FAKTA dari implementasi/pengujian DAN ANALISIS mengapa fakta itu penting.",
+
+  "writing_rules": {
+
+    "perspective": {
+      "required": "Orang ketiga — sudut pandang sistem dan penelitian",
+      "forbidden": ["saya", "kami", "penulis melakukan"],
+      "examples": {
+        "wrong": "Saya membuat halaman kasir dengan Tailwind CSS.",
+        "correct": "Halaman kasir dirancang menggunakan Tailwind CSS dengan pendekatan utility-first."
+      }
+    },
+
+    "sentence_structure": {
+      "for_technical_description": "Kalimat pasif formal",
+      "for_analysis_and_interpretation": "Kalimat aktif orang ketiga",
+      "examples": {
+        "passive_technical": "Koneksi WebSocket dipertahankan secara persisten selama sesi kasir aktif.",
+        "active_analysis": "Hasil pengujian menunjukkan bahwa arsitektur event streaming mampu mempertahankan konsistensi stok."
+      }
+    },
+
+    "paragraph_structure": {
+      "formula": "FAKTA/HASIL → MEKANISME/CARA KERJA → ANALISIS MENGAPA → (opsional) KAITKAN KE TEORI BAB II",
+      "minimum_sentences": 4,
+      "maximum_sentences": 6,
+      "forbidden_pattern": "Gambar X menunjukkan Y. (titik, tidak ada analisis)",
+      "required_pattern": "Gambar X menampilkan Y. [Deskripsi]. [Penjelasan cara kerja]. [Analisis mengapa desain ini dipilih / apa maknanya]."
+    },
+
+    "figure_and_table_reference": {
+      "rule": "Setiap gambar/tabel WAJIB diikuti minimal 2 kalimat analisis setelah deskripsi",
+      "wrong": "Gambar 4.3 adalah tampilan dashboard owner.",
+      "correct": "Gambar 4.3 menampilkan dashboard owner yang menyajikan ringkasan penjualan harian, posisi stok kritis, dan grafik tren pendapatan. Ketiga informasi ini diprioritaskan karena merupakan data yang paling sering dibutuhkan pemilik toko untuk pengambilan keputusan operasional cepat tanpa harus membuka laporan detail."
+    },
+
+    "evidence_requirement": {
+      "rule": "Setiap klaim WAJIB didukung data konkret dari pengujian atau implementasi nyata",
+      "wrong": "Sistem ini lebih cepat dari sistem konvensional.",
+      "correct": "Dibandingkan pendekatan polling konvensional yang membutuhkan permintaan HTTP setiap 2 detik, mekanisme WebSocket yang diimplementasikan memperbarui antarmuka kasir dalam waktu rata-rata 95 milidetik tanpa satu pun permintaan tambahan dari sisi klien."
+    },
+
+    "theory_reference": {
+      "rule": "JANGAN mengulang teori panjang. CUKUP rujuk nomor sub-bab BAB II lalu langsung ke analisis.",
+      "wrong": "WebSocket adalah protokol komunikasi full-duplex yang... (paragraf panjang mengulang BAB II)",
+      "correct": "Perilaku ini konsisten dengan karakteristik eventual consistency yang diuraikan pada Sub-bab 2.3.4 — data dijamin konsisten pada akhirnya meskipun tidak seketika."
+    },
+
+    "transition_words": {
+      "showing_result": ["Berdasarkan pengujian...", "Hasil implementasi menunjukkan...", "Pengujian terhadap... menghasilkan..."],
+      "analyzing": ["Hal ini disebabkan...", "Kondisi ini mengindikasikan...", "Perbedaan ini terjadi karena..."],
+      "comparing_to_theory": ["Temuan ini sesuai dengan...", "Hasil tersebut mengonfirmasi...", "Sejalan dengan konsep... pada Sub-bab..."],
+      "partial_conclusion": ["Dengan demikian...", "Dapat disimpulkan bahwa...", "Hal ini membuktikan bahwa..."],
+      "connecting_subsections": ["Lebih lanjut...", "Sejalan dengan hal tersebut...", "Berkaitan dengan hal di atas..."]
+    },
+
+    "foreign_terms": {
+      "rule": "Cetak miring (italic), jelaskan dalam tanda kurung saat pertama kali muncul di setiap sub-bab",
+      "example": "event streaming (aliran kejadian secara terus-menerus)"
+    },
+
+    "numbers_and_data": {
+      "rule": "Gunakan angka spesifik dari pengujian nyata, bukan estimasi atau perkiraan",
+      "examples": [
+        "latensi rata-rata 87 milidetik",
+        "15 dari 15 skenario pengujian menghasilkan status passed",
+        "5 consumer group berjalan paralel dalam satu container Node.js"
+      ]
+    }
+  },
+
+  "forbidden_patterns": [
+    {
+      "pattern": "Kalimat penunjuk gambar tanpa analisis",
+      "example": "Gambar 4.1 menunjukkan arsitektur sistem."
+    },
+    {
+      "pattern": "Klaim tanpa bukti",
+      "example": "Sistem ini sudah sangat baik dan memenuhi semua kebutuhan."
+    },
+    {
+      "pattern": "Mengulang teori BAB II secara panjang",
+      "example": "Apache Kafka adalah platform streaming terdistribusi yang dikembangkan LinkedIn pada 2011..."
+    },
+    {
+      "pattern": "Bahasa promosi atau berlebihan",
+      "examples": ["sangat canggih", "terbukti sempurna", "tidak perlu diragukan lagi", "pastinya", "tentunya"]
+    },
+    {
+      "pattern": "Bahasa AI-generic tanpa substansi",
+      "examples": [
+        "Sistem ini berhasil diimplementasikan dengan sangat baik.",
+        "Selain itu, sistem juga memiliki berbagai keunggulan yang sangat berguna.",
+        "Dengan demikian, sistem ini dapat digunakan dengan baik oleh pengguna."
+      ]
+    },
+    {
+      "pattern": "Kalimat orang pertama",
+      "examples": ["saya membuat", "kami menggunakan", "penulis memilih"]
+    }
+  ],
+
+  "bab4_section_types": {
+    "4.1_hasil_implementasi": {
+      "focus": "Mendeskripsikan WHAT — apa yang dibangun dan bagaimana cara kerjanya",
+      "tone": "Deskriptif-analitis, berbasis bukti implementasi",
+      "typical_content": ["screenshot antarmuka + analisis keputusan desain UI", "potongan kode kritis + penjelasan mekanisme", "diagram alur + penjelasan data flow"]
+    },
+    "4.2_hasil_pengujian": {
+      "focus": "Mendeskripsikan DATA pengujian dan apa artinya",
+      "tone": "Analitis, berbasis angka dan tabel hasil uji",
+      "typical_content": ["tabel hasil uji fungsional (passed/failed)", "tabel hasil uji kinerja (latensi, throughput)", "analisis per skenario uji"]
+    },
+    "4.3_pembahasan": {
+      "focus": "Menginterpretasikan MENGAPA hasilnya seperti itu + kaitkan ke teori",
+      "tone": "Argumentatif-analitis, menghubungkan hasil ke teori BAB II",
+      "typical_content": ["perbandingan hasil dengan teori atau penelitian sebelumnya", "analisis kelebihan dan keterbatasan sistem", "justifikasi keputusan teknis"]
+    }
+  },
+
+  "architecture_diagram_explanation_template": {
+    "structure": [
+      "1. Kalimat pembuka: sebutkan gambar dan apa yang disajikan",
+      "2. Paragraf per lapisan/komponen: deskripsi peran + cara kerja + alasan desain",
+      "3. Penjelasan alur data: sinkron vs asinkron, dengan kode status/protokol konkret",
+      "4. Kalimat penutup: hubungkan ke tujuan sistem secara keseluruhan"
+    ],
+    "key_elements_to_explain_for_each_component": [
+      "Apa peran komponen ini dalam sistem?",
+      "Bagaimana komponen ini berkomunikasi dengan komponen lain?",
+      "Mengapa desain ini dipilih? (bukan alternatif lain)",
+      "Apa implikasi teknis dari keputusan desain ini?"
+    ]
+  }
+}
