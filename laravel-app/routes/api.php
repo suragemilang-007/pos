@@ -144,6 +144,9 @@ Route::middleware(['auth.jwt', 'role:admin_gudang,owner'])->prefix('gudang')->gr
 // OWNER
 // ─────────────────────────────────────────────────────────
 Route::middleware(['auth.jwt', 'role:owner'])->prefix('owner')->group(function () {
+    // Daftar transaksi seluruh kasir — hanya owner
+    Route::get('/transaksi', [TransaksiController::class, 'index']);
+
     // SD-14: Laporan
     Route::get('/laporan/{jenis}/export', [LaporanController::class, 'export']);
     Route::get('/laporan/{jenis}',        [LaporanController::class, 'generate']);

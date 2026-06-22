@@ -9,6 +9,8 @@ use Illuminate\Database\Seeder;
 
 class RokokSeeder extends Seeder
 {
+    use HasRandomStock;
+
     public function run(): void
     {
         $kategori = KategoriProduk::where('nama_kategori', 'Rokok')->firstOrFail();
@@ -275,7 +277,7 @@ class RokokSeeder extends Seeder
                 'nama_produk'      => $item['nama'],
                 'deskripsi'        => $item['deskripsi'],
                 'harga_beli_dasar' => $item['beli_dasar'],
-                'qty_stok'         => $item['isi_slop'], // stok awal = 1 slop
+                'qty_stok'         => $this->randomQtyStok($item['isi_slop']),
                 'stok_minimum'     => $item['isi_slop'],
                 'satuan_dasar'     => 'pcs',
                 'status'           => 'aktif',

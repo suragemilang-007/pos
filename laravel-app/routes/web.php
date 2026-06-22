@@ -38,3 +38,4 @@ Route::get('/kasir/void-transaksi', fn() => view('kasir.void-transaksi'))->name(
 // ─── Owner ────────────────────────────────────────────────────────────────────
 Route::get('/user', fn() => view('owner.user.index'))->name('owner.user');
 Route::get('/dashboard', fn() => view('owner.dashboard'))->name('owner.dashboard');
+Route::get('/owner/transaksi', fn() => view('owner.transaksi.index'))->name('owner.transaksi');

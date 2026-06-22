@@ -9,6 +9,8 @@ use Illuminate\Database\Seeder;
 
 class MinumanRentengSeeder extends Seeder
 {
+    use HasRandomStock;
+
     public function run(): void
     {
         $kategori = KategoriProduk::where('nama_kategori', 'Minuman Renteng')->firstOrFail();
@@ -240,8 +242,7 @@ class MinumanRentengSeeder extends Seeder
         ];
 
         foreach ($produkList as $item) {
-            // qty_stok awal disamakan dengan stok_minimum
-            $item['produk']['qty_stok'] = $item['produk']['stok_minimum'];
+            $item['produk']['qty_stok'] = $this->randomQtyStok($item['produk']['stok_minimum']);
             $produk = Produk::create($item['produk']);
 
             foreach ($item['satuan'] as $satuan) {

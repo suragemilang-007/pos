@@ -9,6 +9,8 @@ use Illuminate\Database\Seeder;
 
 class NutrisariPopIceSeeder extends Seeder
 {
+    use HasRandomStock;
+
     public function run(): void
     {
         $kategori = KategoriProduk::where('nama_kategori', 'Minuman Renteng')->firstOrFail();
@@ -229,7 +231,7 @@ class NutrisariPopIceSeeder extends Seeder
                 'nama_produk'      => $item['nama_produk'],
                 'deskripsi'        => $item['deskripsi'],
                 'harga_beli_dasar' => $item['harga_beli_dasar'],
-                'qty_stok'         => $item['stok_minimum'], // stok awal = stok minimum
+                'qty_stok'         => $this->randomQtyStok($item['stok_minimum']),
                 'stok_minimum'     => $item['stok_minimum'],
                 'satuan_dasar'     => 'renteng',
                 'status'           => 'aktif',

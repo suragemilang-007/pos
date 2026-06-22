@@ -20,6 +20,7 @@ class DatabaseSeeder extends Seeder
             NutrisariPopIceSeeder::class,  // FK kategori_id → Minuman Renteng
             MinyakGorengSeeder::class,    // FK kategori_id → Minyak Goreng
             RokokSeeder::class,          // FK kategori_id → Rokok
+            TransaksiSeeder::class,      // Data historis 7 hari terakhir (12-25 trx/hari)
         ]);
     }
 }

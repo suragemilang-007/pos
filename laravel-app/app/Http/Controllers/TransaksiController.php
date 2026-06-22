@@ -20,6 +20,70 @@ class TransaksiController extends Controller
     }
 
     /**
+     * GET /api/owner/transaksi — daftar semua transaksi untuk owner.
+     * Filter: dari, sampai (tanggal), status, q (no_transaksi / nama customer).
+     * Selalu paginated 20 per halaman; sertakan ringkasan aggregate untuk stat cards.
+     */
+    public function index(Request $request): JsonResponse
+    {
+        $dari   = $request->input('dari');
+        $sampai = $request->input('sampai');
+        $status = $request->input('status');
+        $q      = trim($request->input('q', ''));
+        $page   = max(1, (int) $request->input('page', 1));
+        $limit  = 20;
+
+        $query = Transaksi::with(['user:id,nama', 'customer:id,nama'])
+            ->orderByDesc('tanggal_transaksi');
+
+        if ($dari)   $query->whereDate('tanggal_transaksi', '>=', $dari);
+        if ($sampai) $query->whereDate('tanggal_transaksi', '<=', $sampai);
+        if ($status) $query->where('status', strtoupper($status));
+
+        if ($q) {
+            $query->where(function ($sub) use ($q) {
+                $sub->where('no_transaksi', 'like', "%{$q}%")
+                    ->orWhereHas('customer', fn($c) => $c->where('nama', 'like', "%{$q}%"));
+            });
+        }
+
+        // Aggregate ringkasan pada query yang sama (sebelum paginate)
+        $ringkasanQuery = clone $query;
+        $ringkasan = [
+            'total_transaksi' => $ringkasanQuery->count(),
+            'total_omzet'     => (float) (clone $ringkasanQuery)->where('status', 'COMPLETED')->sum('total'),
+            'total_void'      => (clone $ringkasanQuery)->where('status', 'VOIDED')->count(),
+        ];
+
+        $total     = $query->count();
+        $transaksi = $query->skip(($page - 1) * $limit)->take($limit)->get();
+
+        return response()->json([
+            'data' => $transaksi->map(fn($t) => [
+                'id'                 => $t->id,
+                'no_transaksi'       => $t->no_transaksi,
+                'tanggal_transaksi'  => $t->tanggal_transaksi,
+                'metode_bayar'       => $t->metode_bayar,
+                'customer'           => $t->customer ? ['id' => $t->customer->id, 'nama' => $t->customer->nama] : null,
+                'kasir'              => $t->user ? ['id' => $t->user->id, 'nama' => $t->user->nama] : null,
+                'subtotal'           => (float) $t->subtotal,
+                'diskon'             => (float) $t->diskon,
+                'total'              => (float) $t->total,
+                'bayar'              => (float) $t->bayar,
+                'kembalian'          => (float) $t->kembalian,
+                'status'             => $t->status,
+            ])->values(),
+            'pagination' => [
+                'current_page' => $page,
+                'last_page'    => (int) ceil($total / $limit),
+                'total'        => $total,
+                'per_page'     => $limit,
+            ],
+            'ringkasan' => $ringkasan,
+        ]);
+    }
+
+    /**
      * GET /api/kasir/transaksi/cari?q={no_transaksi atau id} — dicari untuk keperluan retur.
      * Mendukung pencarian by no_transaksi (TRX-YYYYMMDD-XXXXX) atau numeric id.
      * Hanya transaksi COMPLETED yang dikembalikan — sesuai validasi AD-05.
