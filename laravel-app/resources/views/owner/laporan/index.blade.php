@@ -483,8 +483,8 @@ function switchTab(tab) {
 
 // ── Default tanggal ───────────────────────────────────────────────────────────
 function defaultDates() {
-    const today    = new Date().toISOString().slice(0, 10);
-    const firstDay = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10);
+    const today    = new Date().toLocaleDateString('sv');
+    const firstDay = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toLocaleDateString('sv');
 
     ['jual-dari','beli-dari','sesuai-dari'].forEach(id => {
         document.getElementById(id).value = firstDay;
@@ -997,7 +997,7 @@ async function exportLaporan(jenis, format) {
         });
 
         const ext      = format === 'pdf' ? 'html' : 'csv';
-        const filename = `laporan-${jenis}-${new Date().toISOString().slice(0,10)}.${ext}`;
+        const filename = `laporan-${jenis}-${new Date().toLocaleDateString('sv')}.${ext}`;
         const url      = URL.createObjectURL(new Blob([response.data]));
         const a        = document.createElement('a');
         a.href = url; a.download = filename;

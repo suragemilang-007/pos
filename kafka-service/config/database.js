@@ -46,8 +46,8 @@ async function createPool() {
                 connectionLimit:    10,
                 queueLimit:         0,   // 0 = antrian tak terbatas (tidak reject saat sibuk)
 
-                // Timezone UTC agar TIMESTAMP di MySQL konsisten dengan Node.js
-                timezone: '+00:00',
+                // Timezone WIB agar TIMESTAMP di MySQL dibaca/tulis dalam waktu lokal Indonesia
+                timezone: '+07:00',
             });
 
             // Ambil satu koneksi sebagai probe — kalau ini berhasil, pool siap dipakai.

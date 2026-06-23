@@ -427,7 +427,7 @@ let kodeAutoTimer  = null;
 // INIT
 // ─────────────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = new Date().toLocaleDateString('sv');
     document.getElementById('filter-dari').value   = today;
     document.getElementById('filter-sampai').value = today;
     loadData(1);

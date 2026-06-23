@@ -269,7 +269,7 @@ document.addEventListener('DOMContentLoaded', function () {
         return;
     }
 
-    const today = new Date().toISOString().slice(0, 10);
+    const today = new Date().toLocaleDateString('sv');
     document.getElementById('filter-dari').value   = today;
     document.getElementById('filter-sampai').value = today;
 
@@ -493,7 +493,7 @@ function tutupModal() {
 
 // ── Reset Filter ──────────────────────────────────────────────────────────────
 function resetFilter() {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = new Date().toLocaleDateString('sv');
     document.getElementById('filter-dari').value   = today;
     document.getElementById('filter-sampai').value = today;
     document.getElementById('filter-status').value = '';

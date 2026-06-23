@@ -7,7 +7,8 @@
       "Bash(curl -s -X POST http://localhost/api/auth/login -H 'Content-Type: application/json' -d '{\"username\":\"Ignas007\",\"password\":\"Indonesia123\"}')",
       "Bash(curl -s -X POST http://localhost/api/auth/login -H 'Content-Type: application/json' -d '{\"username\":\"Ignas007\",\"password\":\"passwordsalah\"}')",
       "Bash(curl -s -X POST http://localhost/api/auth/login -H 'Content-Type: application/json' -d '{\"username\":\"kasir1\",\"password\":\"kasir123\"}')",
-      "WebSearch"
+      "WebSearch",
+      "PowerShell(docker exec pos_laravel php -r \"date_default_timezone_set\\('Asia/Jakarta'\\); echo date\\('Y-m-d H:i:s'\\) . ' ' . date_default_timezone_get\\(\\);\")"
     ]
   }
 }

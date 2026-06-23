@@ -79,6 +79,9 @@ Route::middleware(['auth.jwt', 'role:kasir,owner'])->prefix('kasir')->group(func
     // SD-06: Initial load stok semua produk aktif — real-time update via WebSocket
     Route::get('/stok', [ProdukController::class, 'stokRealTime']);
 
+    // Autocomplete suggest — HARUS sebelum {kode} agar tidak ditangkap wildcard
+    Route::get('/produk/suggest', [ProdukController::class, 'suggestProduk']);
+
     // SD-07: Cek stok produk by kode barcode — dipakai saat kasir scan
     Route::get('/produk/{kode}/stok', [ProdukController::class, 'cekStok']);
 

@@ -131,11 +131,11 @@ const isBD = document.documentElement.classList.contains('dark');
 let chartInstance = null;
 
 async function loadDashboard() {
-    const today        = new Date().toISOString().slice(0, 10);
-    const firstOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10);
-    const firstOfLastM = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1).toISOString().slice(0, 10);
-    const lastOfLastM  = new Date(new Date().getFullYear(), new Date().getMonth(), 0).toISOString().slice(0, 10);
-    const sevenDaysAgo = new Date(Date.now() - 6 * 86400000).toISOString().slice(0, 10);
+    const today        = new Date().toLocaleDateString('sv');
+    const firstOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toLocaleDateString('sv');
+    const firstOfLastM = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1).toLocaleDateString('sv');
+    const lastOfLastM  = new Date(new Date().getFullYear(), new Date().getMonth(), 0).toLocaleDateString('sv');
+    const sevenDaysAgo = new Date(Date.now() - 6 * 86400000).toLocaleDateString('sv');
 
     try {
         // 3 panggilan paralel — hemat waktu vs sequential

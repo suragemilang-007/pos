@@ -12,7 +12,8 @@ class TransaksiService
 {
     public function __construct(
         private readonly KafkaProducerService $kafkaProducer
-    ) {}
+    ) {
+    }
 
     // ─────────────────────────────────────────────────────────────────────────
     // CREATE
@@ -33,20 +34,20 @@ class TransaksiService
      * @return Transaksi             Status masih PENDING — Consumer yang update ke COMPLETED/FAILED
      */
     public function create(
-        array   $items,
-        ?int    $customerId,
-        int     $userId,
-        float   $bayar,
-        string  $metodeBayar
+        array $items,
+        ?int $customerId,
+        int $userId,
+        float $bayar,
+        string $metodeBayar
     ): Transaksi {
         // ── a. Hitung nilai keuangan dari items ───────────────────────────────
-        $subtotal  = (float) collect($items)->sum(
+        $subtotal = (float) collect($items)->sum(
             fn($item) => $item['harga_satuan'] * $item['qty']
         );
-        $diskon    = (float) collect($items)->sum(
+        $diskon = (float) collect($items)->sum(
             fn($item) => $item['diskon_item'] ?? 0
         );
-        $total     = $this->calculateTotal($items);
+        $total = $this->calculateTotal($items);
         $kembalian = $bayar - $total;
 
         // ── b. Generate nomor dokumen transaksi ───────────────────────────────
@@ -67,21 +68,18 @@ class TransaksiService
          * Trade-off: jika publish gagal SETELAH commit, transaksi tetap PENDING selamanya.
          * Ini ditangani di sistem monitoring terpisah (cek transaksi PENDING > threshold waktu).
          */
-        $transaksi = DB::transaction(function () use (
-            $items, $customerId, $userId, $bayar, $metodeBayar,
-            $subtotal, $diskon, $total, $kembalian, $noTransaksi
-        ) {
+        $transaksi = DB::transaction(function () use ($items, $customerId, $userId, $bayar, $metodeBayar, $subtotal, $diskon, $total, $kembalian, $noTransaksi) {
             $trx = Transaksi::create([
-                'user_id'     => $userId,
+                'user_id' => $userId,
                 'customer_id' => $customerId,
-                'no_transaksi'=> $noTransaksi,
-                'subtotal'    => $subtotal,
-                'diskon'      => $diskon,
-                'total'       => $total,
-                'bayar'       => $bayar,
-                'kembalian'   => $kembalian,
-                'metode_bayar'=> $metodeBayar,
-                'status'      => 'PENDING',
+                'no_transaksi' => $noTransaksi,
+                'subtotal' => $subtotal,
+                'diskon' => $diskon,
+                'total' => $total,
+                'bayar' => $bayar,
+                'kembalian' => $kembalian,
+                'metode_bayar' => $metodeBayar,
+                'status' => 'PENDING',
                 // tanggal_transaksi default CURRENT_TIMESTAMP di DB
             ]);
 
@@ -90,17 +88,17 @@ class TransaksiService
             // mengedit harga atau satuan produk di kemudian hari
             foreach ($items as $item) {
                 DetailTransaksi::create([
-                    'transaksi_id'    => $trx->id,
-                    'produk_id'       => $item['produk_id'],
-                    'produk_satuan_id'=> $item['produk_satuan_id'],
-                    'nama_satuan'     => $item['nama_satuan'],
-                    'isi_satuan'      => $item['isi_satuan'],
-                    'qty'             => $item['qty'],
-                    'harga_satuan'    => $item['harga_satuan'],
-                    'diskon_item'     => $item['diskon_item'] ?? 0,
+                    'transaksi_id' => $trx->id,
+                    'produk_id' => $item['produk_id'],
+                    'produk_satuan_id' => $item['produk_satuan_id'],
+                    'nama_satuan' => $item['nama_satuan'],
+                    'isi_satuan' => $item['isi_satuan'],
+                    'qty' => $item['qty'],
+                    'harga_satuan' => $item['harga_satuan'],
+                    'diskon_item' => $item['diskon_item'] ?? 0,
                     // subtotal per baris dihitung saat INSERT — tidak ada kolom kalkulasi di detail
-                    'subtotal'        => $item['harga_satuan'] * $item['qty']
-                                        - ($item['diskon_item'] ?? 0),
+                    'subtotal' => $item['harga_satuan'] * $item['qty']
+                        - ($item['diskon_item'] ?? 0),
                 ]);
             }
 
@@ -115,9 +113,9 @@ class TransaksiService
 
         Log::info('[TRANSAKSI] Created', [
             'no_transaksi' => $noTransaksi,
-            'user_id'      => $userId,
-            'total'        => $total,
-            'items'        => count($items),
+            'user_id' => $userId,
+            'total' => $total,
+            'items' => count($items),
         ]);
 
         // ── f. Return PENDING — Consumer yang akan mengubah ke COMPLETED/FAILED
@@ -136,7 +134,7 @@ class TransaksiService
     {
         return (float) collect($items)->sum(
             fn($item) => ($item['harga_satuan'] * $item['qty'])
-                       - ($item['diskon_item'] ?? 0)
+            - ($item['diskon_item'] ?? 0)
         );
     }
 
@@ -186,9 +184,9 @@ class TransaksiService
             'customer:id,nama',
         ])->findOrFail($id);
 
-        $namaKasir    = $trx->user?->nama ?? '-';
+        $namaKasir = $trx->user?->nama ?? '-';
         $namaCustomer = $trx->customer?->nama ?? 'Umum';
-        $tanggal      = $trx->tanggal_transaksi
+        $tanggal = $trx->tanggal_transaksi
             ? $trx->tanggal_transaksi->format('d/m/Y H:i')
             : now()->format('d/m/Y H:i');
 
@@ -196,8 +194,8 @@ class TransaksiService
         $barisItem = '';
         foreach ($trx->details as $detail) {
             $namaProduk = $detail->produk?->nama_produk ?? 'Produk';
-            $harga      = number_format($detail->harga_satuan, 0, ',', '.');
-            $subtotal   = number_format($detail->subtotal, 0, ',', '.');
+            $harga = number_format($detail->harga_satuan, 0, ',', '.');
+            $subtotal = number_format($detail->subtotal, 0, ',', '.');
 
             $barisItem .= "
             <tr>
@@ -217,12 +215,12 @@ class TransaksiService
             }
         }
 
-        $subtotalFmt  = number_format($trx->subtotal, 0, ',', '.');
-        $diskonFmt    = number_format($trx->diskon, 0, ',', '.');
-        $totalFmt     = number_format($trx->total, 0, ',', '.');
-        $bayarFmt     = number_format($trx->bayar, 0, ',', '.');
+        $subtotalFmt = number_format($trx->subtotal, 0, ',', '.');
+        $diskonFmt = number_format($trx->diskon, 0, ',', '.');
+        $totalFmt = number_format($trx->total, 0, ',', '.');
+        $bayarFmt = number_format($trx->bayar, 0, ',', '.');
         $kembalianFmt = number_format($trx->kembalian, 0, ',', '.');
-        $metodeFmt    = strtoupper($trx->metode_bayar);
+        $metodeFmt = strtoupper($trx->metode_bayar);
 
         return <<<HTML
         <!DOCTYPE html>
@@ -243,7 +241,7 @@ class TransaksiService
         </head>
         <body>
             <div class="center bold" style="font-size:16px;">TOKO MELATI</div>
-            <div class="center" style="font-size:11px;">Jl. Pasar Grosir No. 1</div>
+            <div class="center" style="font-size:11px;">Jl. Pahlawan No. 330,Purwokerto Selatan</div>
             <div class="divider"></div>
 
             <table>
@@ -319,7 +317,7 @@ class TransaksiService
      */
     private function generateNoTransaksi(): string
     {
-        $today  = now()->format('Ymd');
+        $today = now()->format('Ymd');
         $prefix = "TRX-{$today}-";
 
         $latest = Transaksi::where('no_transaksi', 'like', $prefix . '%')

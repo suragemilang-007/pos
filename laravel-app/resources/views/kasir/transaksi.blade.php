@@ -13,12 +13,20 @@
         {{-- Input scan/ketik kode produk --}}
         <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-4">
             <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
-                Scan / Ketik Kode Produk
+                Scan / Ketik Kode / Nama Produk
             </label>
-            <div class="flex gap-2">
-                <input id="input-kode" type="text" autocomplete="off" autofocus
-                    placeholder="Scan barcode atau ketik kode produk..."
-                    class="flex-1 px-3 py-2.5 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors font-mono">
+            <div class="flex gap-2 relative">
+                <div class="flex-1 relative">
+                    <input id="input-kode" type="text" autocomplete="off" autofocus
+                        placeholder="Scan barcode, kode, atau nama produk..."
+                        class="w-full px-3 py-2.5 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors font-mono"
+                        oninput="onInputKode()"
+                        onkeydown="onKeydownKode(event)">
+                    {{-- Dropdown suggest --}}
+                    <ul id="suggest-list"
+                        class="hidden absolute left-0 right-0 top-full mt-1 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg overflow-hidden max-h-64 overflow-y-auto">
+                    </ul>
+                </div>
                 <button id="btn-cari" onclick="cariProduk()"
                     class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 text-white text-sm font-medium rounded-lg transition-colors shrink-0">
                     Cari
@@ -110,19 +118,7 @@
 
         {{-- ── Void quick link ─────────────────────────────────────────────── --}}
         {{-- Akses cepat ke halaman void tanpa navigasi manual                 --}}
-        <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm px-4 py-2.5 flex items-center justify-between">
-            <p class="text-xs text-gray-500 dark:text-gray-400">
-                Perlu batalkan transaksi sebelumnya?
-            </p>
-            <a href="/kasir/void-transaksi"
-                class="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-200 transition-colors whitespace-nowrap">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
-                </svg>
-                Void Transaksi
-            </a>
-        </div>
+        
 
     </div>{{-- /panel kiri --}}
 
@@ -335,15 +331,115 @@ function onWsReconnect() {
     if (pendingTrxId) startPolling();
 }
 
-// ── Scan / Cari Produk ────────────────────────────────────────────────────────
-document.getElementById('input-kode').addEventListener('keydown', function (e) {
-    if (e.key === 'Enter') cariProduk();
+// ── Autocomplete Suggest ──────────────────────────────────────────────────────
+let suggestTimer   = null;
+let suggestActive  = -1;   // index item yang sedang di-highlight keyboard
+let suggestItems   = [];   // cache hasil suggest terakhir
+
+function onInputKode() {
+    clearTimeout(suggestTimer);
+    const q = document.getElementById('input-kode').value.trim();
+    if (q.length < 2) { hideSuggest(); return; }
+    suggestTimer = setTimeout(() => fetchSuggest(q), 220);
+}
+
+async function fetchSuggest(q) {
+    try {
+        const { data } = await axios.get('/api/kasir/produk/suggest', { params: { q } });
+        suggestItems = data.data || [];
+        renderSuggest(suggestItems);
+    } catch (_) { hideSuggest(); }
+}
+
+function renderSuggest(items) {
+    const ul = document.getElementById('suggest-list');
+    if (!items.length) { hideSuggest(); return; }
+
+    suggestActive = -1;
+    ul.innerHTML = items.map((p, i) => {
+        const stokColor = p.qty_stok === 0
+            ? 'text-red-500 dark:text-red-400'
+            : 'text-gray-400 dark:text-gray-500';
+        const stokLabel = p.qty_stok === 0 ? 'Stok habis' : `Stok: ${p.qty_stok} ${p.satuan_dasar}`;
+        return `<li data-i="${i}"
+            class="flex items-center justify-between px-3 py-2 cursor-pointer hover:bg-indigo-50 dark:hover:bg-indigo-900/30 border-b border-gray-100 dark:border-gray-700 last:border-0 transition-colors"
+            onmousedown="pilihSuggest(${i})">
+            <div>
+                <span class="text-sm font-medium text-gray-900 dark:text-gray-100">${escSuggest(p.nama_produk)}</span>
+                <span class="ml-2 text-xs font-mono text-gray-400 dark:text-gray-500">${escSuggest(p.kode_produk)}</span>
+            </div>
+            <span class="text-xs ${stokColor} ml-4 shrink-0">${stokLabel}</span>
+        </li>`;
+    }).join('');
+
+    ul.classList.remove('hidden');
+}
+
+function hideSuggest() {
+    document.getElementById('suggest-list').classList.add('hidden');
+    suggestActive = -1;
+}
+
+function pilihSuggest(i) {
+    const item = suggestItems[i];
+    if (!item) return;
+    document.getElementById('input-kode').value = item.kode_produk;
+    hideSuggest();
+    cariProduk();
+}
+
+// navigasi keyboard pada dropdown
+function onKeydownKode(e) {
+    const ul = document.getElementById('suggest-list');
+    const isOpen = !ul.classList.contains('hidden');
+
+    if (e.key === 'Enter') {
+        if (isOpen && suggestActive >= 0) {
+            e.preventDefault();
+            pilihSuggest(suggestActive);
+        } else {
+            hideSuggest();
+            cariProduk();
+        }
+        return;
+    }
+    if (e.key === 'Escape') { hideSuggest(); return; }
+
+    if (!isOpen) return;
+
+    if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setHighlight(Math.min(suggestActive + 1, suggestItems.length - 1));
+    } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setHighlight(Math.max(suggestActive - 1, 0));
+    }
+}
+
+function setHighlight(idx) {
+    const ul = document.getElementById('suggest-list');
+    ul.querySelectorAll('li').forEach((li, i) => {
+        if (i === idx) li.classList.add('bg-indigo-50', 'dark:bg-indigo-900/30');
+        else           li.classList.remove('bg-indigo-50', 'dark:bg-indigo-900/30');
+    });
+    suggestActive = idx;
+}
+
+function escSuggest(str) {
+    return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// Tutup dropdown saat klik di luar
+document.addEventListener('click', function (e) {
+    if (!document.getElementById('input-kode').contains(e.target)) hideSuggest();
 });
 
+// ── Scan / Cari Produk ────────────────────────────────────────────────────────
 async function cariProduk() {
     const kode = document.getElementById('input-kode').value.trim();
     if (!kode) return;
 
+    hideSuggest();
     setErrScan('');
     document.getElementById('panel-produk').classList.add('hidden');
 

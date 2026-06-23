@@ -163,7 +163,11 @@ class ProdukController extends Controller
         }
 
         if ($request->filled('nama')) {
-            $query->where('nama_produk', 'like', '%' . $request->string('nama') . '%');
+            $cari = $request->string('nama');
+            $query->where(function ($q) use ($cari) {
+                $q->where('nama_produk', 'like', '%' . $cari . '%')
+                  ->orWhereHas('satuanList', fn ($s) => $s->where('barcode', $cari));
+            });
         }
 
         $limit  = min((int) $request->input('limit', 20), 100);
@@ -193,6 +197,46 @@ class ProdukController extends Controller
                     'per_page'     => $produk->perPage(),
                 ],
             ],
+        ], 200);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // SUGGEST PRODUK (kasir) — autocomplete saat kasir mengetik nama/kode
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * GET /api/kasir/produk/suggest?q=xxx
+     *
+     * Dipakai dropdown autocomplete di halaman transaksi.
+     * Cari berdasarkan: nama_produk (LIKE) ATAU kode_produk (LIKE) ATAU barcode (exact).
+     * Kembalikan maks 8 hasil agar dropdown tidak terlalu panjang.
+     */
+    public function suggestProduk(Request $request): JsonResponse
+    {
+        $q = trim((string) $request->input('q', ''));
+
+        if (strlen($q) < 2) {
+            return response()->json(['data' => []], 200);
+        }
+
+        $results = Produk::with('satuanList:id,produk_id,nama_satuan,is_default')
+            ->where('status', 'aktif')
+            ->where(function ($query) use ($q) {
+                $query->where('nama_produk', 'like', '%' . $q . '%')
+                      ->orWhere('kode_produk', 'like', '%' . $q . '%')
+                      ->orWhereHas('satuanList', fn ($s) => $s->where('barcode', $q));
+            })
+            ->orderBy('nama_produk')
+            ->limit(8)
+            ->get(['id', 'kode_produk', 'nama_produk', 'satuan_dasar', 'qty_stok']);
+
+        return response()->json([
+            'data' => $results->map(fn ($p) => [
+                'kode_produk'  => $p->kode_produk,
+                'nama_produk'  => $p->nama_produk,
+                'satuan_dasar' => $p->satuan_dasar,
+                'qty_stok'     => $p->qty_stok,
+            ])->values(),
         ], 200);
     }
 

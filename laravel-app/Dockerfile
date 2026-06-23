@@ -15,6 +15,9 @@ RUN apk add --no-cache \
     $PHPIZE_DEPS \
     linux-headers
 
+# ── Timezone WIB ─────────────────────────────────────────────
+RUN echo "date.timezone = Asia/Jakarta" > /usr/local/etc/php/conf.d/timezone.ini
+
 # ── PHP Extensions ────────────────────────────────────────────
 RUN docker-php-ext-install \
     pdo_mysql \

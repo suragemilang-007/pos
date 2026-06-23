@@ -244,7 +244,7 @@ const produkCache = new Map();
 // ── Init ──────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async function () {
     // Set tanggal default = hari ini
-    document.getElementById('input-tanggal').value = new Date().toISOString().slice(0, 10);
+    document.getElementById('input-tanggal').value = new Date().toLocaleDateString('sv');
     await loadSupplierDropdown();
     tambahBaris(); // Mulai dengan 1 baris kosong
     document.addEventListener('click', closeProdukDropdown);
@@ -428,7 +428,7 @@ function onTipePembayaranChange(tipe) {
         // Set minimal tanggal jatuh tempo = besok
         const besok = new Date();
         besok.setDate(besok.getDate() + 1);
-        document.getElementById('input-jatuh-tempo').min = besok.toISOString().slice(0, 10);
+        document.getElementById('input-jatuh-tempo').min = besok.toLocaleDateString('sv');
     } else {
         sectionKredit.classList.add('hidden');
         // Reset field kredit saat kembali ke cash

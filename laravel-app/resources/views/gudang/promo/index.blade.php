@@ -523,7 +523,7 @@ function renderTabel() {
 // ── Status Promo (client-side logic) ─────────────────────────────────────────
 function getStatusPromo(p) {
     if (!p.is_active) return 'nonaktif';
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toLocaleDateString('sv');
     if (p.berlaku_dari  && p.berlaku_dari  > today) return 'belum_mulai';
     if (p.berlaku_sampai && p.berlaku_sampai < today) return 'expired';
     return 'aktif';
@@ -793,7 +793,7 @@ function updatePreview() {
         pvStatus.className = 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400';
         pvStatus.textContent = 'Nonaktif';
     } else {
-        const today = new Date().toISOString().split('T')[0];
+        const today = new Date().toLocaleDateString('sv');
         if (dari && dari > today) {
             pvStatus.className = 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400';
             pvStatus.textContent = 'Belum Mulai';

@@ -553,7 +553,7 @@ async function bukaBayar(poId) {
     // Set jumlah default = lunasi penuh
     document.getElementById('input-jumlah').value = parseFloat(selectedPO.sisa_hutang).toFixed(0);
     updateSisaPreview();
-    document.getElementById('input-tgl-bayar').value = new Date().toISOString().slice(0, 10);
+    document.getElementById('input-tgl-bayar').value = new Date().toLocaleDateString('sv');
 
     // Load riwayat pembayaran dari endpoint detail PO
     await loadRiwayat(poId);

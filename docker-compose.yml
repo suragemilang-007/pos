@@ -33,6 +33,8 @@ services:
       - /var/www/html/vendor # exclude vendor dari bind mount
       - /var/www/html/node_modules
     environment:
+      TZ: Asia/Jakarta
+
       APP_NAME: "POS Toko Melati"
       APP_ENV: local
       APP_DEBUG: "true"
@@ -86,6 +88,7 @@ services:
     ports:
       - "3001:3001" # expose untuk debug WebSocket langsung
     environment:
+      TZ: Asia/Jakarta
       NODE_ENV: production
 
       # Kafka Broker — WAJIB nama service Docker, bukan localhost
@@ -123,6 +126,7 @@ services:
     image: mysql:8.0
     container_name: pos_mysql
     environment:
+      TZ: Asia/Jakarta
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
       MYSQL_DATABASE: pos_grosir
       MYSQL_USER: ${DB_USERNAME}
