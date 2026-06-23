@@ -277,6 +277,17 @@ class ProdukController extends Controller
             // false → hard delete "Produk akan dihapus permanen"
             'has_transaksi'    => $this->produkService->hasTransaksi($p->id),
             'satuan_tersedia'  => $this->produkSatuanService->buildSatuanTersedia($p),
+            // satuan_list: data lengkap termasuk harga_beli dan barcode untuk halaman manajemen produk.
+            // Berbeda dari satuan_tersedia (hanya harga_jual + stok, untuk kasir).
+            'satuan_list'      => $p->satuanList->map(fn ($s) => [
+                'id'          => $s->id,
+                'nama_satuan' => $s->nama_satuan,
+                'isi'         => $s->isi,
+                'harga_beli'  => (float) $s->harga_beli,
+                'harga_jual'  => (float) $s->harga_jual,
+                'is_default'  => (bool) $s->is_default,
+                'barcode'     => $s->barcode,
+            ])->values(),
         ];
     }
 }

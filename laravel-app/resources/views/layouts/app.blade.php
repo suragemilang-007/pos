@@ -9,6 +9,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
+    {{-- Sembunyikan html sampai Tailwind CDN selesai dimuat, mencegah FOUC --}}
+    <style>html { visibility: hidden; }</style>
+
     {{-- Tailwind CSS CDN + dark mode class strategy (§10.2) --}}
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -21,12 +24,17 @@
     {{-- Axios CDN --}}
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 
-    {{-- Terapkan dark mode SEBELUM render agar tidak flicker --}}
+    {{-- Terapkan dark mode SEBELUM render agar tidak flicker.
+         window.load memastikan Tailwind CDN sudah selesai proses semua class
+         sebelum halaman ditampilkan — menghilangkan FOUC. --}}
     <script>
         (function () {
             if (localStorage.getItem('theme') === 'dark') {
                 document.documentElement.classList.add('dark');
             }
+            window.addEventListener('load', function () {
+                document.documentElement.style.visibility = 'visible';
+            });
         })();
     </script>
 

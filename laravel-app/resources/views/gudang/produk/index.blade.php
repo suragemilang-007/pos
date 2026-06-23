@@ -234,10 +234,40 @@ function renderTabel(rows, pagination) {
 
     empty.classList.add('hidden');
     tbody.innerHTML = rows.map(p => {
-        const stokKritis = p.qty_stok <= p.stok_minimum;
+        const stokKritis  = p.qty_stok <= p.stok_minimum;
+        const satuanList  = p.satuan_list || [];
         const statusBadge = p.status === 'aktif'
             ? `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">Aktif</span>`
             : `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400">Nonaktif</span>`;
+
+        // ── Baris sub-tabel satuan ────────────────────────────────────────────
+        const satuanRows = satuanList.map(s => {
+            const defaultBadge = s.is_default
+                ? `<span class="ml-1 text-xs font-semibold px-1.5 py-0.5 bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 rounded">Utama</span>`
+                : '';
+            const barcodeCell  = s.barcode
+                ? `<span class="font-mono">${esc(s.barcode)}</span>`
+                : `<span class="text-gray-300 dark:text-gray-600">—</span>`;
+            return `
+                <tr class="border-t border-gray-100 dark:border-gray-700/60 hover:bg-indigo-50/30 dark:hover:bg-indigo-950/10 transition-colors">
+                    <td class="px-4 py-2">
+                        <span class="text-sm font-medium text-gray-800 dark:text-gray-200">${esc(s.nama_satuan)}</span>
+                        ${defaultBadge}
+                    </td>
+                    <td class="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 text-center">
+                        ${fmt(s.isi)} ${esc(p.satuan_dasar)}
+                    </td>
+                    <td class="px-4 py-2 text-sm font-mono text-gray-700 dark:text-gray-300 text-right">
+                        Rp ${fmt(s.harga_beli)}
+                    </td>
+                    <td class="px-4 py-2 text-sm font-mono text-green-700 dark:text-green-400 font-semibold text-right">
+                        Rp ${fmt(s.harga_jual)}
+                    </td>
+                    <td class="px-4 py-2 text-xs text-gray-500 dark:text-gray-400">
+                        ${barcodeCell}
+                    </td>
+                </tr>`;
+        }).join('');
 
         return `
         <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
@@ -270,13 +300,14 @@ function renderTabel(rows, pagination) {
                         </svg>
                         Edit
                     </a>
-                    <a href="/gudang/produk/${p.id}/edit#satuan-section"
-                        class="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
+                    <button onclick="toggleSatuan(${p.id})"
+                        title="Lihat daftar satuan"
+                        class="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 hover:text-indigo-700 dark:hover:text-indigo-300 rounded-lg transition-colors">
+                        <svg id="chevron-${p.id}" class="w-3.5 h-3.5 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                         </svg>
-                        Satuan
-                    </a>
+                        Satuan (${satuanList.length})
+                    </button>
                     <button onclick="bukaModalHapus(${p.id})"
                         class="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -284,6 +315,40 @@ function renderTabel(rows, pagination) {
                         </svg>
                         Hapus
                     </button>
+                </div>
+            </td>
+        </tr>
+        <tr id="satuan-row-${p.id}" class="hidden">
+            <td colspan="7" class="p-0 bg-indigo-50/40 dark:bg-indigo-950/20">
+                <div class="mx-6 my-3 rounded-xl border border-indigo-100 dark:border-indigo-900/40 overflow-hidden shadow-sm">
+                    <div class="px-4 py-2 bg-indigo-50 dark:bg-indigo-950/40 border-b border-indigo-100 dark:border-indigo-900/40 flex items-center gap-2">
+                        <svg class="w-4 h-4 text-indigo-500 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
+                        </svg>
+                        <span class="text-xs font-semibold text-indigo-700 dark:text-indigo-300">
+                            Daftar Satuan — ${esc(p.nama_produk)}
+                        </span>
+                        <a href="/gudang/produk/${p.id}/edit#satuan-section"
+                            class="ml-auto text-xs text-indigo-600 dark:text-indigo-400 hover:underline">
+                            Kelola Satuan →
+                        </a>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm text-left">
+                            <thead>
+                                <tr class="bg-white dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700">
+                                    <th class="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-32">Satuan</th>
+                                    <th class="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center w-28">Isi</th>
+                                    <th class="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right w-36">Harga Beli</th>
+                                    <th class="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right w-36">Harga Jual</th>
+                                    <th class="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Barcode</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-100 dark:divide-gray-700/60">
+                                ${satuanRows || '<tr><td colspan="5" class="px-4 py-4 text-center text-xs text-gray-400">Belum ada satuan.</td></tr>'}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </td>
         </tr>`;
@@ -401,6 +466,17 @@ function sembunyikanModal(id) {
     const el = document.getElementById(id);
     el.classList.add('hidden');
     el.classList.remove('flex');
+}
+
+// ── Toggle detail satuan ──────────────────────────────────────────────────────
+function toggleSatuan(id) {
+    const row     = document.getElementById('satuan-row-' + id);
+    const chevron = document.getElementById('chevron-' + id);
+    if (!row) return;
+
+    const isHidden = row.classList.toggle('hidden');
+    // Rotasi chevron: → (tertutup) vs ↓ (terbuka)
+    chevron.style.transform = isHidden ? '' : 'rotate(90deg)';
 }
 
 // ── Filter dengan debounce ────────────────────────────────────────────────────

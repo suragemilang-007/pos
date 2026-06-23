@@ -212,13 +212,20 @@ class ProdukService
      */
     public function getByKode(string $kode): ?Produk
     {
-        return Produk::where('kode_produk', $kode)
-            ->where('status', 'aktif')
+        // Cari berdasarkan kode_produk ATAU barcode di produk_satuan.
+        // Barcode disimpan di produk_satuan (bukan di tabel produk) karena setiap
+        // satuan (pcs, dus, slop) bisa punya barcode berbeda — hanya satuan default
+        // yang diisi barcode, satuan beli (karton/slop) dibiarkan null.
+        return Produk::where('status', 'aktif')
+            ->where(function ($q) use ($kode) {
+                $q->where('kode_produk', $kode)
+                  ->orWhereHas('satuanList', fn ($s) => $s->where('barcode', $kode));
+            })
             ->with([
                 'satuanList',
                 'promoAktif' => fn ($q) => $q->with([
                     'satuanSyarat',
-                    'bonusProduk.satuanList',  // nested: satuanList untuk buildSatuanTersedia()
+                    'bonusProduk.satuanList',
                     'bonusSatuan',
                 ]),
             ])
