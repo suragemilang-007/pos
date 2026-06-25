@@ -24,6 +24,7 @@ const { startVoidConsumer, stopVoidConsumer }               = require('./consume
 const { start: startPurchaseConsumer }                       = require('./consumers/purchaseConsumer');
 const { start: startReturnConsumer }                         = require('./consumers/returnConsumer');
 const { startAdjustmentConsumer, stopAdjustmentConsumer }   = require('./consumers/adjustmentConsumer');
+const { recoverPendingTransactions }                         = require('./recovery/pendingRecovery');
 
 // ─── Referensi untuk graceful shutdown ───────────────────────────────────────
 let httpServer    = null;
@@ -156,6 +157,17 @@ async function main() {
         console.log('[INIT] Adjustment consumer aktif');
 
         console.log('[MAIN] Semua Kafka consumer aktif');
+
+        // ── Step 6: Recovery transaksi PENDING ───────────────────────────────
+        // Harus dijalankan SETELAH consumer aktif agar event yang di-publish ulang
+        // langsung diproses. Delay 2 detik agar consumer selesai join group Kafka.
+        setTimeout(async () => {
+            try {
+                await recoverPendingTransactions(httpProducer, pool);
+            } catch (err) {
+                console.error('[MAIN] Recovery transaksi PENDING gagal:', err.message);
+            }
+        }, 2000);
 
     } catch (err) {
         console.error('[MAIN] Kafka consumer gagal start:', err.message);

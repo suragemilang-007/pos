@@ -113,6 +113,9 @@ Route::middleware(['auth.jwt', 'role:admin_gudang,owner'])->prefix('gudang')->gr
     Route::put   ('/produk/{produk}/satuan/{satuan}',          [ProdukSatuanController::class, 'update']);
     Route::delete('/produk/{produk}/satuan/{satuan}',          [ProdukSatuanController::class, 'destroy']);
 
+    // Riwayat penjualan per bulan per satuan (read-only, tidak lewat Kafka)
+    Route::get('/produk/{id}/penjualan', [ProdukController::class, 'riwayatPenjualan']);
+
     // Dashboard gudang — ringkasan stok & pembelian
     Route::get('/ringkasan', [PembelianController::class, 'ringkasan']);
 

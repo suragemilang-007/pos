@@ -9,7 +9,6 @@ use App\Services\Transaction\TransaksiService;
 use App\Services\Transaction\VoidTransaksiService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class TransaksiController extends Controller
 {
@@ -148,10 +147,10 @@ class TransaksiController extends Controller
             ->whereDate('tanggal_transaksi', $today)
             ->where('status', 'COMPLETED');
 
-        // 5 transaksi terakhir kasir ini (semua status agar kasir tahu ada yang pending)
+        // 10 transaksi terakhir kasir ini (semua status agar kasir tahu ada yang pending)
         $terakhir = Transaksi::where('user_id', $userId)
             ->latest('created_at')
-            ->take(5)
+            ->take(10)
             ->get(['id', 'no_transaksi', 'tanggal_transaksi', 'total', 'metode_bayar', 'status']);
 
         // Jam transaksi terakhir (COMPLETED)
@@ -197,30 +196,36 @@ class TransaksiController extends Controller
      */
     public function store(StoreTransaksiRequest $request): JsonResponse
     {
-        try {
-            $v = $request->validated();
+        $v = $request->validated();
 
-            $transaksi = $this->transaksiService->create(
-                items: $v['items'],
-                customerId: $v['customer_id'] ?? null,
-                userId: $request->input('auth_user_id'),
-                bayar: (float) $v['bayar'],
-                metodeBayar: $v['metode_bayar']
-            );
+        $transaksi = $this->transaksiService->create(
+            items: $v['items'],
+            customerId: $v['customer_id'] ?? null,
+            userId: $request->input('auth_user_id'),
+            bayar: (float) $v['bayar'],
+            metodeBayar: $v['metode_bayar']
+        );
 
+        // Transaksi sudah tersimpan di DB. Jika Kafka gagal (kafkaFailed=true),
+        // transaksi tetap PENDING dan Consumer akan memprosesnya saat Kafka pulih.
+        // Kirim kafka_warning agar frontend tampilkan info "menunggu antrian"
+        // daripada modal error — mencegah kasir membuat transaksi ganda.
+        if ($transaksi->kafkaFailed) {
             return response()->json([
                 'id_transaksi' => $transaksi->id,
                 'no_transaksi' => $transaksi->no_transaksi,
                 'status' => 'PENDING',
-                'message' => 'Transaksi sedang diproses',
+                'kafka_warning' => true,
+                'message' => 'Transaksi dicatat. Sistem antrian sedang tidak tersedia, akan diproses otomatis.',
             ], 202);
-
-        } catch (\RuntimeException $e) {
-            // Kafka publish gagal (kafka-service down/timeout)
-            return response()->json([
-                'message' => 'Gagal mengirim transaksi ke antrian: ' . $e->getMessage(),
-            ], 503);
         }
+
+        return response()->json([
+            'id_transaksi' => $transaksi->id,
+            'no_transaksi' => $transaksi->no_transaksi,
+            'status' => 'PENDING',
+            'message' => 'Transaksi sedang diproses',
+        ], 202);
     }
 
     /**

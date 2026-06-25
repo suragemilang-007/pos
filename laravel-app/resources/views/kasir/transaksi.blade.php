@@ -200,16 +200,20 @@
                 <span id="lbl-proses">Proses Transaksi</span>
             </button>
 
-            {{-- Status Kafka (muncul setelah 202) --}}
+            {{-- Status Kafka (muncul setelah 202 diterima) --}}
             <div id="status-kafka" class="hidden text-center">
                 <div class="flex items-center justify-center gap-2 py-2">
-                    <svg class="animate-spin w-4 h-4 text-amber-500" fill="none" viewBox="0 0 24 24">
+                    <svg id="kafka-spinner" class="animate-spin w-4 h-4 text-amber-500" fill="none" viewBox="0 0 24 24">
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
                     </svg>
-                    <span class="text-sm text-amber-600 dark:text-amber-400 font-medium">Memproses transaksi...</span>
+                    {{-- ikon peringatan — hanya tampil saat kafka_warning --}}
+                    <svg id="kafka-warn-icon" class="hidden w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+                    </svg>
+                    <span id="kafka-msg" class="text-sm text-amber-600 dark:text-amber-400 font-medium">Memproses transaksi...</span>
                 </div>
-                <p class="text-xs text-gray-400 dark:text-gray-500">Menunggu konfirmasi dari server</p>
+                <p id="kafka-submsg" class="text-xs text-gray-400 dark:text-gray-500">Menunggu konfirmasi dari server</p>
             </div>
 
             {{-- Tombol bersihkan keranjang --}}
@@ -276,6 +280,91 @@
                 Tutup & Coba Lagi
             </button>
         </div>
+    </div>
+</div>
+
+{{-- ══ MODAL INFO PEMBAYARAN (QRIS / TRANSFER) ══════════════════════════════ --}}
+{{-- Muncul setelah kasir klik "Proses" dengan metode qris atau transfer.     --}}
+{{-- Transaksi baru di-submit ke backend setelah kasir konfirmasi bayaran.    --}}
+<div id="modal-pembayaran" class="hidden fixed inset-0 z-50 items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+    <div class="w-full max-w-sm bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden">
+
+        {{-- Header --}}
+        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center gap-3">
+            <div class="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center shrink-0">
+                <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
+                </svg>
+            </div>
+            <h3 id="bayar-modal-title" class="text-base font-semibold text-gray-900 dark:text-gray-100">Pembayaran</h3>
+        </div>
+
+        {{-- Panel QRIS --}}
+        <div id="panel-qris" class="hidden px-6 pt-5 pb-2 text-center">
+            {{-- QR image — ganti /images/qris-toko.png dengan QR QRIS merchant Anda --}}
+            <div class="mx-auto w-52 h-52 rounded-xl overflow-hidden border-2 border-gray-200 dark:border-gray-600 bg-white flex items-center justify-center">
+                <img src="/images/qris-toko.png" alt="QRIS Toko Melati"
+                     class="w-full h-full object-contain"
+                     onerror="this.style.display='none'; document.getElementById('qris-placeholder').classList.remove('hidden')">
+                <div id="qris-placeholder" class="hidden p-4 text-center">
+                    <svg class="w-20 h-20 mx-auto text-gray-200 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/>
+                    </svg>
+                    <p class="text-xs text-gray-400 dark:text-gray-500 mt-2 leading-tight">
+                        Tambahkan QR QRIS toko di<br>
+                        <code class="font-mono text-indigo-500">public/images/qris-toko.png</code>
+                    </p>
+                </div>
+            </div>
+            <div class="mt-4 px-4 py-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl">
+                <p class="text-xs text-gray-500 dark:text-gray-400 mb-0.5">Total Pembayaran</p>
+                <p id="qris-total" class="text-2xl font-bold font-mono text-indigo-600 dark:text-indigo-400"></p>
+            </div>
+            <p class="mt-3 mb-1 text-xs text-gray-400 dark:text-gray-500">
+                Tunjukkan kode QR ini ke customer untuk dipindai
+            </p>
+        </div>
+
+        {{-- Panel Transfer --}}
+        <div id="panel-transfer" class="hidden px-6 pt-5 pb-2">
+            <div class="bg-gray-50 dark:bg-gray-700/40 rounded-xl p-4 space-y-3">
+                <div class="flex items-center justify-between">
+                    <span class="text-sm text-gray-500 dark:text-gray-400">Bank</span>
+                    <span id="transfer-bank" class="text-sm font-bold text-gray-900 dark:text-gray-100"></span>
+                </div>
+                <div class="flex items-center justify-between">
+                    <span class="text-sm text-gray-500 dark:text-gray-400">No. Rekening</span>
+                    <span id="transfer-norek" class="text-lg font-mono font-bold text-gray-900 dark:text-gray-100 tracking-wider"></span>
+                </div>
+                <div class="flex items-center justify-between">
+                    <span class="text-sm text-gray-500 dark:text-gray-400">Atas Nama</span>
+                    <span id="transfer-atas-nama" class="text-sm font-semibold text-gray-900 dark:text-gray-100"></span>
+                </div>
+            </div>
+            <div class="mt-3 px-4 py-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl text-center">
+                <p class="text-xs text-gray-500 dark:text-gray-400 mb-0.5">Nominal Transfer</p>
+                <p id="transfer-total" class="text-2xl font-bold font-mono text-indigo-600 dark:text-indigo-400"></p>
+            </div>
+            <p class="mt-3 mb-1 text-xs text-gray-400 dark:text-gray-500 text-center">
+                Minta customer transfer tepat sesuai nominal di atas
+            </p>
+        </div>
+
+        {{-- Footer --}}
+        <div class="flex gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+            <button onclick="batalPembayaran()"
+                class="flex-1 px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
+                Batal
+            </button>
+            <button onclick="konfirmasiPembayaran()"
+                class="flex-1 inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+                Pembayaran Diterima
+            </button>
+        </div>
+
     </div>
 </div>
 
@@ -632,6 +721,10 @@ function resetKeranjang() {
     document.getElementById('customer-selected').classList.add('hidden');
     document.getElementById('input-bayar').value = '';
     document.getElementById('status-kafka').classList.add('hidden');
+    document.getElementById('kafka-spinner').classList.remove('hidden');
+    document.getElementById('kafka-warn-icon').classList.add('hidden');
+    document.getElementById('kafka-msg').textContent = 'Memproses transaksi...';
+    document.getElementById('kafka-submsg').textContent = 'Menunggu konfirmasi dari server';
     document.getElementById('lbl-proses').textContent = 'Proses Transaksi';
     renderKeranjang();
 }
@@ -686,19 +779,80 @@ function clearCustomer() {
 function showCustomerDrop() { document.getElementById('dropdown-customer').classList.remove('hidden'); }
 function hideCustomerDrop() { document.getElementById('dropdown-customer').classList.add('hidden'); }
 
+// ── Konfigurasi Pembayaran Non-Tunai ─────────────────────────────────────────
+// Sesuaikan dengan data rekening dan QRIS toko
+const INFO_TRANSFER = {
+    bank:     'BCA',
+    noRek:    '1234567890',
+    atasNama: 'Toko Melati',
+};
+// QR QRIS: letakkan file gambar di public/images/qris-toko.png
+
 // ── Proses Transaksi ──────────────────────────────────────────────────────────
 async function prosesTransaksi() {
     if (!cart.length) return;
 
-    const total    = cart.reduce((s, c) => s + c.qty * c.harga_satuan, 0);
-    const metode   = document.querySelector('input[name="metode_bayar"]:checked')?.value || 'tunai';
-    const bayar    = parseFloat(document.getElementById('input-bayar').value) || total;
-    const kembalian = Math.max(0, bayar - total);
+    const total  = cart.reduce((s, c) => s + c.qty * c.harga_satuan, 0);
+    const metode = document.querySelector('input[name="metode_bayar"]:checked')?.value || 'tunai';
+    const bayar  = parseFloat(document.getElementById('input-bayar').value) || total;
 
     if (metode === 'tunai' && bayar < total) {
         alert('Uang yang diterima kurang dari total transaksi');
         return;
     }
+
+    // QRIS / Transfer: tampilkan info pembayaran dulu — kasir konfirmasi setelah customer bayar
+    if (metode === 'qris' || metode === 'transfer') {
+        tampilkanModalPembayaran(metode, total);
+        return;
+    }
+
+    // Tunai: langsung submit
+    await submitTransaksi(metode, bayar, total);
+}
+
+// ── Modal Info Pembayaran ─────────────────────────────────────────────────────
+function tampilkanModalPembayaran(metode, total) {
+    const fmtRp = n => 'Rp ' + new Intl.NumberFormat('id-ID').format(n);
+
+    document.getElementById('panel-qris').classList.add('hidden');
+    document.getElementById('panel-transfer').classList.add('hidden');
+
+    if (metode === 'qris') {
+        document.getElementById('bayar-modal-title').textContent = 'Pembayaran QRIS';
+        document.getElementById('qris-total').textContent        = fmtRp(total);
+        document.getElementById('panel-qris').classList.remove('hidden');
+    } else {
+        document.getElementById('bayar-modal-title').textContent       = 'Pembayaran Transfer Bank';
+        document.getElementById('transfer-bank').textContent           = INFO_TRANSFER.bank;
+        document.getElementById('transfer-norek').textContent          = INFO_TRANSFER.noRek;
+        document.getElementById('transfer-atas-nama').textContent      = INFO_TRANSFER.atasNama;
+        document.getElementById('transfer-total').textContent          = fmtRp(total);
+        document.getElementById('panel-transfer').classList.remove('hidden');
+    }
+
+    const modalEl = document.getElementById('modal-pembayaran');
+    modalEl.classList.remove('hidden');
+    modalEl.classList.add('flex');
+}
+
+function batalPembayaran() {
+    const modalEl = document.getElementById('modal-pembayaran');
+    modalEl.classList.add('hidden');
+    modalEl.classList.remove('flex');
+}
+
+async function konfirmasiPembayaran() {
+    batalPembayaran();
+    const metode = document.querySelector('input[name="metode_bayar"]:checked')?.value || 'qris';
+    const total  = cart.reduce((s, c) => s + c.qty * c.harga_satuan, 0);
+    // bayar = total untuk non-tunai (tidak ada kembalian)
+    await submitTransaksi(metode, total, total);
+}
+
+// ── Submit ke Backend ─────────────────────────────────────────────────────────
+async function submitTransaksi(metode, bayar, total) {
+    const kembalian = Math.max(0, bayar - total);
 
     setLoading(true);
     document.getElementById('status-kafka').classList.add('hidden');
@@ -727,13 +881,33 @@ async function prosesTransaksi() {
         // 202 Accepted — Kafka Consumer yang menyelesaikan proses
         pendingTrxId = data.id_transaksi;
         setLoading(false);
+
+        if (data.kafka_warning) {
+            // Transaksi sudah tersimpan di DB tapi Kafka sedang tidak tersedia.
+            // Tampilkan info menunggu antrian — jangan modal error.
+            document.getElementById('kafka-spinner').classList.add('hidden');
+            document.getElementById('kafka-warn-icon').classList.remove('hidden');
+            document.getElementById('kafka-msg').textContent = 'Transaksi menunggu antrian...';
+            document.getElementById('kafka-submsg').textContent = '#' + data.no_transaksi + ' dicatat, akan diproses otomatis';
+        } else {
+            document.getElementById('kafka-spinner').classList.remove('hidden');
+            document.getElementById('kafka-warn-icon').classList.add('hidden');
+            document.getElementById('kafka-msg').textContent = 'Memproses transaksi...';
+            document.getElementById('kafka-submsg').textContent = 'Menunggu konfirmasi dari server';
+        }
+
         document.getElementById('status-kafka').classList.remove('hidden');
         document.getElementById('btn-proses').disabled = true;
         document.getElementById('lbl-proses').textContent = 'Menunggu Konfirmasi...';
-        startPolling(); // Mulai polling sebagai fallback jika WS miss event
+        startPolling(); // fallback polling jika WS miss event
     } catch (err) {
         setLoading(false);
-        tampilkanError(err.response?.data?.message || 'Gagal memproses transaksi');
+        // Sembunyikan detail teknis (cURL, URL, stack trace) dari kasir
+        const raw = err.response?.data?.message || '';
+        const isTeknis = raw.includes('cURL') || raw.includes('http://') || raw.includes('timeout') || raw.includes('kafka');
+        tampilkanError(isTeknis || !raw
+            ? 'Gagal memproses transaksi. Silakan coba lagi atau hubungi teknisi.'
+            : raw);
     }
 }
 

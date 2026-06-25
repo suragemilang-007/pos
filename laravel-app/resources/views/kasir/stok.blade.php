@@ -117,7 +117,17 @@
                         <th class="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Nama Produk</th>
                         <th class="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Kategori</th>
                         <th class="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center w-24">Sat. Dasar</th>
-                        <th class="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right w-28">Stok</th>
+                        <th class="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right w-28">
+                            <button onclick="toggleSortStok()"
+                                class="inline-flex items-center justify-end gap-1 w-full hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+                                Stok
+                                <span id="sort-stok-indicator">
+                                    <svg class="w-3.5 h-3.5 text-gray-300 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"/>
+                                    </svg>
+                                </span>
+                            </button>
+                        </th>
                         <th class="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right w-20">Min</th>
                         <th class="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center w-24">Status</th>
                         <th class="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center w-20">Detail</th>
@@ -162,6 +172,37 @@
 let stokData     = [];   // cache lokal hasil GET /api/kasir/stok
 let expandedRows = new Set();  // id produk yang sub-row-nya sedang terbuka
 let filterTimer  = null;
+let sortDir      = null; // null = urutan API (nama_produk), 'asc', 'desc'
+
+// ── Sort by Stok ──────────────────────────────────────────────────────────────
+function toggleSortStok() {
+    if (sortDir === null)        sortDir = 'asc';
+    else if (sortDir === 'asc')  sortDir = 'desc';
+    else                          sortDir = null;
+    updateSortIndicator();
+    renderTabel(getSortedRows());
+    applyStatusFilter();
+}
+
+function getSortedRows() {
+    if (sortDir === null) return stokData;
+    return stokData.slice().sort((a, b) => {
+        const diff = (a.qty_stok ?? 0) - (b.qty_stok ?? 0);
+        return sortDir === 'asc' ? diff : -diff;
+    });
+}
+
+function updateSortIndicator() {
+    const el = document.getElementById('sort-stok-indicator');
+    if (!el) return;
+    if (sortDir === 'asc') {
+        el.innerHTML = `<svg class="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M8 13l4-4 4 4"/></svg>`;
+    } else if (sortDir === 'desc') {
+        el.innerHTML = `<svg class="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M8 11l4 4 4-4"/></svg>`;
+    } else {
+        el.innerHTML = `<svg class="w-3.5 h-3.5 text-gray-300 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"/></svg>`;
+    }
+}
 
 // ── Load Kategori (untuk dropdown) ───────────────────────────────────────────
 async function loadKategoriFilter() {
@@ -193,7 +234,7 @@ async function loadStok() {
     try {
         const { data } = await axios.get('/api/kasir/stok?' + params.toString());
         stokData = (data.data?.stok ?? data.data ?? []);
-        renderTabel(stokData);
+        renderTabel(getSortedRows());
         applyStatusFilter();
         updateBadgeSummary();
     } catch (err) {
@@ -289,10 +330,11 @@ function toggleDetail(produkId) {
     const btn    = document.getElementById('btn-detail-' + produkId);
     if (!subrow) return;
 
-    const isOpen = !subrow.classList.contains('hidden');
+    const isOpen = expandedRows.has(produkId);
 
     if (isOpen) {
         subrow.classList.add('hidden');
+        subrow.style.display = 'none';
         expandedRows.delete(produkId);
         btn.innerHTML = `
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -300,6 +342,7 @@ function toggleDetail(produkId) {
             </svg> Detail`;
     } else {
         subrow.classList.remove('hidden');
+        subrow.style.display = '';
         expandedRows.add(produkId);
         btn.innerHTML = `
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

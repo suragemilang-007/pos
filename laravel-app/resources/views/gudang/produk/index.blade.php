@@ -74,7 +74,17 @@
                         <th class="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Nama Produk</th>
                         <th class="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Kategori</th>
                         <th class="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center">Satuan Dasar</th>
-                        <th class="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right">Stok</th>
+                        <th class="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right">
+                            <button onclick="toggleSortStok()"
+                                class="inline-flex items-center justify-end gap-1 w-full hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+                                Stok
+                                <span id="sort-stok-indicator">
+                                    <svg class="w-3.5 h-3.5 text-gray-300 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"/>
+                                    </svg>
+                                </span>
+                            </button>
+                        </th>
                         <th class="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center">Status</th>
                         <th class="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right">Aksi</th>
                     </tr>
@@ -95,7 +105,7 @@
         </div>
 
         {{-- Pagination --}}
-        <div id="pagination-wrapper" class="hidden px-6 py-3 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
+        <div id="pagination-wrapper" class="hidden px-6 py-3 border-t border-gray-200 dark:border-gray-700 items-center justify-between">
             <p id="pagination-info" class="text-xs text-gray-500 dark:text-gray-400"></p>
             <div id="pagination-btns" class="flex items-center gap-1"></div>
         </div>
@@ -103,6 +113,89 @@
 
 </div>
 @endsection
+
+{{-- ══ MODAL RIWAYAT PENJUALAN ════════════════════════════════════════════════ --}}
+<div id="modal-penjualan"
+    class="hidden fixed inset-0 z-50 items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+    <div class="w-full max-w-2xl bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+
+        {{-- Header --}}
+        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between shrink-0">
+            <div>
+                <h3 id="penjualan-title" class="text-base font-semibold text-gray-900 dark:text-gray-100">Riwayat Penjualan</h3>
+                <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Jumlah terjual per bulan berdasarkan satuan jual</p>
+            </div>
+            <div class="flex items-center gap-3">
+                <select id="penjualan-tahun"
+                    class="px-3 py-1.5 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-colors"
+                    onchange="muatDataPenjualan()">
+                </select>
+                <button onclick="tutupModalPenjualan()"
+                    class="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        {{-- Body --}}
+        <div class="overflow-y-auto px-6 py-5 space-y-5">
+
+            {{-- Skeleton --}}
+            <div id="penjualan-skeleton" class="space-y-3">
+                <div class="animate-pulse h-48 bg-gray-100 dark:bg-gray-700 rounded-xl"></div>
+                <div class="animate-pulse grid grid-cols-3 gap-3">
+                    <div class="h-16 bg-gray-100 dark:bg-gray-700 rounded-xl"></div>
+                    <div class="h-16 bg-gray-100 dark:bg-gray-700 rounded-xl"></div>
+                    <div class="h-16 bg-gray-100 dark:bg-gray-700 rounded-xl"></div>
+                </div>
+            </div>
+
+            {{-- Konten --}}
+            <div id="penjualan-content" class="hidden space-y-5">
+
+                {{-- Ringkasan stat --}}
+                <div class="grid grid-cols-3 gap-3">
+                    <div class="bg-emerald-50 dark:bg-emerald-900/20 rounded-xl p-3 text-center">
+                        <p class="text-xs text-emerald-600 dark:text-emerald-400 font-medium">Total Terjual</p>
+                        <p id="stat-total-qty" class="text-xl font-bold text-emerald-700 dark:text-emerald-300 font-mono mt-0.5">0</p>
+                        <p id="stat-satuan-dasar" class="text-xs text-emerald-500 dark:text-emerald-500">pcs</p>
+                    </div>
+                    <div class="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-3 text-center">
+                        <p class="text-xs text-blue-600 dark:text-blue-400 font-medium">Total Pendapatan</p>
+                        <p id="stat-total-pendapatan" class="text-xl font-bold text-blue-700 dark:text-blue-300 font-mono mt-0.5">Rp 0</p>
+                        <p class="text-xs text-blue-500 dark:text-blue-500">dari transaksi</p>
+                    </div>
+                    <div class="bg-amber-50 dark:bg-amber-900/20 rounded-xl p-3 text-center">
+                        <p class="text-xs text-amber-600 dark:text-amber-400 font-medium">Bulan Terlaris</p>
+                        <p id="stat-bulan-terlaris" class="text-xl font-bold text-amber-700 dark:text-amber-300 mt-0.5">—</p>
+                        <p id="stat-bulan-terlaris-qty" class="text-xs text-amber-500 dark:text-amber-500">—</p>
+                    </div>
+                </div>
+
+                {{-- Grafik --}}
+                <div class="bg-gray-50 dark:bg-gray-700/30 rounded-xl p-4">
+                    <canvas id="chart-penjualan" height="200"></canvas>
+                </div>
+
+                {{-- Empty state --}}
+                <div id="penjualan-empty" class="hidden py-8 text-center">
+                    <svg class="mx-auto w-10 h-10 text-gray-300 dark:text-gray-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10"/>
+                    </svg>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Belum ada transaksi di tahun ini.</p>
+                </div>
+
+            </div>
+
+            {{-- Error state --}}
+            <div id="penjualan-error" class="hidden py-6 text-center">
+                <p class="text-sm text-red-500 dark:text-red-400">Gagal memuat data penjualan.</p>
+            </div>
+        </div>
+    </div>
+</div>
 
 {{-- ══ MODAL KONFIRMASI HAPUS ══════════════════════════════════════════════════ --}}
 <div id="modal-hapus"
@@ -168,13 +261,207 @@
 </div>
 
 @push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
 <script>
 // ── State ─────────────────────────────────────────────────────────────────────
-let produkList   = [];
-let deleteTarget = null;
-let currentPage  = 1;
-let lastPage     = 1;
-let filterTimer  = null;
+let produkList        = [];
+let deleteTarget      = null;
+let currentPage       = 1;
+let lastPage          = 1;
+let filterTimer       = null;
+let sortDir           = null; // null = default (nama_produk asc), 'asc', 'desc'
+let penjualanProdukId = null;
+let penjualanChart    = null; // referensi Chart.js instance (untuk destroy sebelum re-render)
+
+// ── Modal Riwayat Penjualan ───────────────────────────────────────────────────
+function bukaModalPenjualan(id) {
+    penjualanProdukId = id;
+    const produk = produkList.find(p => p.id === id);
+    const nama = produk ? produk.nama_produk : '';
+    document.getElementById('penjualan-title').textContent = 'Penjualan — ' + nama;
+
+    // Isi dropdown tahun: tahun ini ± 2
+    const tahunSel = document.getElementById('penjualan-tahun');
+    const tahunIni = new Date().getFullYear();
+    tahunSel.innerHTML = '';
+    for (let y = tahunIni + 1; y >= tahunIni - 3; y--) {
+        const opt = document.createElement('option');
+        opt.value = y;
+        opt.textContent = y;
+        if (y === tahunIni) opt.selected = true;
+        tahunSel.appendChild(opt);
+    }
+
+    tampilkanModal('modal-penjualan');
+    muatDataPenjualan();
+}
+
+function tutupModalPenjualan() {
+    sembunyikanModal('modal-penjualan');
+    if (penjualanChart) { penjualanChart.destroy(); penjualanChart = null; }
+    penjualanProdukId = null;
+}
+
+async function muatDataPenjualan() {
+    if (!penjualanProdukId) return;
+
+    const tahun = document.getElementById('penjualan-tahun').value;
+
+    // Reset state UI
+    document.getElementById('penjualan-skeleton').classList.remove('hidden');
+    document.getElementById('penjualan-content').classList.add('hidden');
+    document.getElementById('penjualan-error').classList.add('hidden');
+    document.getElementById('penjualan-empty').classList.add('hidden');
+    if (penjualanChart) { penjualanChart.destroy(); penjualanChart = null; }
+
+    try {
+        const { data } = await axios.get(`/api/gudang/produk/${penjualanProdukId}/penjualan?tahun=${tahun}`);
+        renderModalPenjualan(data.data);
+    } catch {
+        document.getElementById('penjualan-skeleton').classList.add('hidden');
+        document.getElementById('penjualan-error').classList.remove('hidden');
+        document.getElementById('penjualan-content').classList.remove('hidden');
+    }
+}
+
+function renderModalPenjualan(d) {
+    document.getElementById('penjualan-skeleton').classList.add('hidden');
+    document.getElementById('penjualan-content').classList.remove('hidden');
+
+    const satuanDasar = d.satuan_dasar || 'pcs';
+    document.getElementById('stat-satuan-dasar').textContent = satuanDasar;
+
+    // Jika tidak ada data sama sekali
+    if (!d.bulanan || d.bulanan.length === 0) {
+        document.getElementById('penjualan-empty').classList.remove('hidden');
+        document.getElementById('stat-total-qty').textContent = '0';
+        document.getElementById('stat-total-pendapatan').textContent = 'Rp 0';
+        document.getElementById('stat-bulan-terlaris').textContent = '—';
+        document.getElementById('stat-bulan-terlaris-qty').textContent = '—';
+        return;
+    }
+
+    // ── Hitung statistik ──────────────────────────────────────────────────
+    let totalQtyDasar = 0, totalPendapatan = 0;
+    let bulanTerlaris = null, maxQtyBulan = 0;
+
+    // Susun data per bulan: qty satuan dasar = qty × isi_satuan
+    const semuaBulan = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
+                         'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+    const dataPerBulan = Array.from({ length: 12 }, (_, i) => ({
+        bulan: i + 1, label: semuaBulan[i], satuan: {}
+    }));
+
+    d.bulanan.forEach(b => {
+        const idx = b.bulan - 1;
+        let qtyBulanDasar = 0;
+        b.satuan.forEach(s => {
+            const qtyDasar = s.total_qty * s.isi_satuan;
+            dataPerBulan[idx].satuan[s.nama_satuan] = {
+                total_qty: s.total_qty,
+                total_pendapatan: s.total_pendapatan,
+            };
+            totalQtyDasar   += qtyDasar;
+            totalPendapatan += s.total_pendapatan;
+            qtyBulanDasar   += qtyDasar;
+        });
+        if (qtyBulanDasar > maxQtyBulan) {
+            maxQtyBulan  = qtyBulanDasar;
+            bulanTerlaris = b.nama_bulan;
+        }
+    });
+
+    document.getElementById('stat-total-qty').textContent = fmt(totalQtyDasar);
+    document.getElementById('stat-total-pendapatan').textContent = 'Rp ' + fmt(Math.round(totalPendapatan));
+    document.getElementById('stat-bulan-terlaris').textContent = bulanTerlaris || '—';
+    document.getElementById('stat-bulan-terlaris-qty').textContent = maxQtyBulan > 0
+        ? fmt(maxQtyBulan) + ' ' + satuanDasar : '—';
+
+    // ── Bangun dataset Chart.js per satuan ───────────────────────────────
+    const satuanList = d.satuan_list || [];
+    const palette = [
+        ['rgba(16,185,129,0.8)', 'rgba(16,185,129,1)'],  // emerald
+        ['rgba(59,130,246,0.8)', 'rgba(59,130,246,1)'],   // blue
+        ['rgba(245,158,11,0.8)', 'rgba(245,158,11,1)'],   // amber
+        ['rgba(239,68,68,0.8)',  'rgba(239,68,68,1)'],    // red
+        ['rgba(139,92,246,0.8)', 'rgba(139,92,246,1)'],   // violet
+    ];
+
+    const datasets = satuanList.map((satuan, i) => {
+        const [bg, border] = palette[i % palette.length];
+        return {
+            label: satuan,
+            data: dataPerBulan.map(b => b.satuan[satuan]?.total_qty ?? 0),
+            backgroundColor: bg,
+            borderColor: border,
+            borderWidth: 1,
+            borderRadius: 4,
+        };
+    });
+
+    // Jika satuan_list kosong (tidak ada penjualan), chart tidak perlu ditampilkan
+    if (datasets.length === 0) {
+        document.getElementById('penjualan-empty').classList.remove('hidden');
+        return;
+    }
+
+    // ── Render Chart.js ───────────────────────────────────────────────────
+    const isDark = document.documentElement.classList.contains('dark');
+    const gridColor  = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)';
+    const labelColor = isDark ? '#9ca3af' : '#6b7280';
+
+    const ctx = document.getElementById('chart-penjualan').getContext('2d');
+    penjualanChart = new Chart(ctx, {
+        type: 'bar',
+        data: { labels: semuaBulan, datasets },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    display: satuanList.length > 1,
+                    labels: { color: labelColor, font: { size: 11 }, boxWidth: 12, padding: 12 },
+                },
+                tooltip: {
+                    callbacks: {
+                        label: ctx => ` ${ctx.dataset.label}: ${fmt(ctx.raw)} unit`,
+                    },
+                },
+            },
+            scales: {
+                x: { grid: { color: gridColor }, ticks: { color: labelColor, font: { size: 11 } } },
+                y: {
+                    grid: { color: gridColor },
+                    ticks: {
+                        color: labelColor, font: { size: 11 },
+                        callback: v => fmt(v),
+                    },
+                    beginAtZero: true,
+                },
+            },
+        },
+    });
+}
+
+// ── Sort by Stok ──────────────────────────────────────────────────────────────
+function toggleSortStok() {
+    if (sortDir === null)        sortDir = 'asc';
+    else if (sortDir === 'asc')  sortDir = 'desc';
+    else                          sortDir = null;
+    updateSortIndicator();
+    loadProduk(1);
+}
+
+function updateSortIndicator() {
+    const el = document.getElementById('sort-stok-indicator');
+    if (!el) return;
+    if (sortDir === 'asc') {
+        el.innerHTML = `<svg class="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M8 13l4-4 4 4"/></svg>`;
+    } else if (sortDir === 'desc') {
+        el.innerHTML = `<svg class="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M8 11l4 4 4-4"/></svg>`;
+    } else {
+        el.innerHTML = `<svg class="w-3.5 h-3.5 text-gray-300 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"/></svg>`;
+    }
+}
 
 // ── Load Kategori (untuk dropdown filter) ────────────────────────────────────
 async function loadKategoriFilter() {
@@ -202,6 +489,7 @@ async function loadProduk(page = 1) {
     if (nama)     params.set('nama', nama);
     if (kategori) params.set('kategori_id', kategori);
     if (status)   params.set('status', status);
+    if (sortDir !== null) { params.set('sort_by', 'qty_stok'); params.set('sort_dir', sortDir); }
 
     document.getElementById('tbl-skeleton').classList.remove('hidden');
     document.getElementById('tbl-wrapper').classList.add('hidden');
@@ -308,6 +596,14 @@ function renderTabel(rows, pagination) {
                         </svg>
                         Satuan (${satuanList.length})
                     </button>
+                    <button onclick="bukaModalPenjualan(${p.id})"
+                        title="Riwayat penjualan per bulan"
+                        class="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 rounded-lg transition-colors">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                        </svg>
+                        Penjualan
+                    </button>
                     <button onclick="bukaModalHapus(${p.id})"
                         class="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -360,11 +656,15 @@ function renderTabel(rows, pagination) {
 // ── Pagination ────────────────────────────────────────────────────────────────
 function renderPagination(pg) {
     if (!pg || pg.total <= pg.per_page) {
-        document.getElementById('pagination-wrapper').classList.add('hidden');
+        const pw = document.getElementById('pagination-wrapper');
+        pw.classList.add('hidden');
+        pw.classList.remove('flex');
         return;
     }
 
-    document.getElementById('pagination-wrapper').classList.remove('hidden');
+    const pw = document.getElementById('pagination-wrapper');
+    pw.classList.remove('hidden');
+    pw.classList.add('flex');
     document.getElementById('pagination-info').textContent =
         `Menampilkan ${Math.min((pg.current_page - 1) * pg.per_page + 1, pg.total)}–${Math.min(pg.current_page * pg.per_page, pg.total)} dari ${pg.total} produk`;
 

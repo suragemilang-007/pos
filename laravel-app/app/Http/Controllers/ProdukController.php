@@ -9,6 +9,7 @@ use App\Services\Inventory\ProdukSatuanService;
 use App\Services\Inventory\ProdukService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class ProdukController extends Controller
 {
@@ -44,8 +45,12 @@ class ProdukController extends Controller
             $query->where('status', $status);
         }
 
-        $limit  = min((int) $request->input('limit', 20), 100);
-        $produk = $query->orderBy('nama_produk')->paginate($limit);
+        $limit   = min((int) $request->input('limit', 20), 100);
+        $sortBy  = $request->input('sort_by') === 'qty_stok' ? 'qty_stok' : 'nama_produk';
+        $sortDir = in_array(strtolower((string) $request->input('sort_dir', 'asc')), ['asc', 'desc'])
+            ? strtolower($request->input('sort_dir', 'asc'))
+            : 'asc';
+        $produk  = $query->orderBy($sortBy, $sortDir)->paginate($limit);
 
         $data = $produk->getCollection()->map(function (Produk $p) {
             return $this->formatProduk($p);
@@ -295,6 +300,80 @@ class ProdukController extends Controller
                 ])->values(),
             ],
         ], 200);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // RIWAYAT PENJUALAN — admin gudang & owner
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * GET /api/gudang/produk/{id}/penjualan?tahun=2025
+     *
+     * Ringkasan penjualan produk per bulan per satuan jual.
+     * Hanya menghitung transaksi COMPLETED — PENDING/FAILED/VOIDED diabaikan.
+     *
+     * Kenapa pakai raw query (DB::select) bukan Eloquent?
+     * Karena butuh GROUP BY dua kolom (bulan, nama_satuan) dengan SUM agregat
+     * — Eloquent tidak mudah menyatakan ini tanpa subquery yang lebih kompleks.
+     * nama_satuan diambil dari snapshot di detail_transaksi, bukan join ke produk_satuan,
+     * agar data historis tetap akurat walau satuan sudah diubah.
+     */
+    public function riwayatPenjualan(int $id, Request $request): JsonResponse
+    {
+        $produk = Produk::find($id);
+        if (! $produk) {
+            return response()->json(['message' => 'Produk tidak ditemukan'], 404);
+        }
+
+        $tahun = max(2000, min(2100, (int) $request->input('tahun', now()->year)));
+
+        $rows = DB::select('
+            SELECT
+                MONTH(t.tanggal_transaksi)  AS bulan,
+                dt.nama_satuan,
+                dt.isi_satuan,
+                SUM(dt.qty)                 AS total_qty,
+                SUM(dt.qty * dt.harga_satuan) AS total_pendapatan
+            FROM   detail_transaksi dt
+            JOIN   transaksi t ON t.id = dt.transaksi_id
+            WHERE  dt.produk_id = ?
+              AND  t.status     = ?
+              AND  YEAR(t.tanggal_transaksi) = ?
+            GROUP BY MONTH(t.tanggal_transaksi), dt.nama_satuan, dt.isi_satuan
+            ORDER BY bulan ASC, dt.nama_satuan ASC
+        ', [$id, 'COMPLETED', $tahun]);
+
+        $namaBulan = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+                          'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+
+        // Kumpulkan semua satuan unik yang pernah terjual tahun ini
+        $satuanSet = [];
+        $byBulan   = [];
+
+        foreach ($rows as $row) {
+            $b = (int) $row->bulan;
+            if (! isset($byBulan[$b])) {
+                $byBulan[$b] = ['bulan' => $b, 'nama_bulan' => $namaBulan[$b], 'satuan' => []];
+            }
+            $byBulan[$b]['satuan'][] = [
+                'nama_satuan'      => $row->nama_satuan,
+                'isi_satuan'       => (int) $row->isi_satuan,
+                'total_qty'        => (int) $row->total_qty,
+                'total_pendapatan' => (float) $row->total_pendapatan,
+            ];
+            $satuanSet[$row->nama_satuan] = true;
+        }
+
+        return response()->json([
+            'data' => [
+                'produk_id'    => $produk->id,
+                'nama_produk'  => $produk->nama_produk,
+                'satuan_dasar' => $produk->satuan_dasar,
+                'tahun'        => $tahun,
+                'satuan_list'  => array_keys($satuanSet),
+                'bulanan'      => array_values($byBulan),
+            ],
+        ]);
     }
 
     // ─────────────────────────────────────────────────────────────────────────

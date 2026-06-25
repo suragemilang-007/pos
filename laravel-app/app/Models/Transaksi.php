@@ -12,6 +12,10 @@ class Transaksi extends Model
     // Nama tabel eksplisit — Laravel akan salah pluralize menjadi 'transaksis'
     protected $table = 'transaksi';
 
+    // Flag non-persistent — diisi Service jika Kafka publish gagal setelah DB commit.
+    // Tidak ada di $fillable sehingga tidak pernah tersimpan ke database.
+    public bool $kafkaFailed = false;
+
     // Tidak ada updated_at di tabel ini — transaksi immutable setelah Consumer selesai
     const UPDATED_AT = null;
 

@@ -109,14 +109,25 @@ class TransaksiService
         // loadMissing agar tidak query ulang jika relasi sudah termuat
         $transaksi->loadMissing('details');
 
-        $this->kafkaProducer->publishTransactionCreated($transaksi);
+        try {
+            $this->kafkaProducer->publishTransactionCreated($transaksi);
 
-        Log::info('[TRANSAKSI] Created', [
-            'no_transaksi' => $noTransaksi,
-            'user_id' => $userId,
-            'total' => $total,
-            'items' => count($items),
-        ]);
+            Log::info('[TRANSAKSI] Created', [
+                'no_transaksi' => $noTransaksi,
+                'user_id' => $userId,
+                'total' => $total,
+                'items' => count($items),
+            ]);
+        } catch (\RuntimeException $e) {
+            // Kafka tidak tersedia, tapi transaksi sudah COMMIT ke DB.
+            // Tidak re-throw — Consumer akan memproses saat Kafka pulih.
+            // KafkaJS internal retry akan otomatis publish ulang dari queue.
+            Log::warning('[TRANSAKSI] Kafka publish gagal — transaksi tetap PENDING', [
+                'no_transaksi' => $noTransaksi,
+                'error' => $e->getMessage(),
+            ]);
+            $transaksi->kafkaFailed = true;
+        }
 
         // ── f. Return PENDING — Consumer yang akan mengubah ke COMPLETED/FAILED
         return $transaksi;

@@ -130,6 +130,25 @@ async function markFailed(pool, transaksiId, userId, message, wsService) {
 async function processTransaction(event, pool, wsService) {
   const { transaksiId, items, userId } = event;
 
+  // ── Idempotency check: skip jika transaksi sudah diproses ────────────────
+  // Mencegah double-processing saat event di-publish ulang oleh recovery
+  // atau saat ada duplikat event di Kafka karena producer retry.
+  const [statusRows] = await pool.query(
+    'SELECT status FROM transaksi WHERE id = ?',
+    [transaksiId],
+  );
+  if (!statusRows[0]) {
+    console.error(`[TRX CONSUMER] Transaksi ${transaksiId} tidak ditemukan di DB — dilewati`);
+    return;
+  }
+  if (statusRows[0].status !== 'PENDING') {
+    console.log(
+      `[TRX CONSUMER] Transaksi ${transaksiId} sudah ` +
+      `status=${statusRows[0].status} — dilewati (event duplikat atau sudah diproses)`,
+    );
+    return;
+  }
+
   // ── Langkah 2-3: Validasi stok semua item ────────────────────────────────
   console.log(
     `[TRX CONSUMER] Memvalidasi stok untuk transaksi ${transaksiId} (${items.length} item)...`,
