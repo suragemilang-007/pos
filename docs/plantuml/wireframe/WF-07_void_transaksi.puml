@@ -1,0 +1,56 @@
+@startsalt WF-07_Void_Transaksi
+' Sumber: laravel-app/resources/views/kasir/void-transaksi.blade.php
+' Status panel bawah berganti sesuai event WebSocket:
+'   menunggu persetujuan → void.completed (sukses) / void.rejected (ditolak)
+!include _layout.iuml
+!$active = "Void Transaksi"
+title WF-07: Halaman Pengajuan Void Transaksi (Kasir)
+{+
+  {
+    $sidebar_kasir() | {
+      $header("Void Transaksi")
+      .
+      {+
+        <color:blue><&info> <b>Pengajuan void memerlukan persetujuan pemilik.
+        <size:10>Void membatalkan semua item sekaligus. Untuk pembatalan sebagian, gunakan Retur Penjualan.
+      }
+      .
+      {+
+        <b>1. Cari Transaksi
+        --
+        { "TRX-20260502-00001 atau ID angka...          " | [ Cari ] }
+      }
+      .
+      {+
+        { <b>2. Detail Transaksi | . | . | <color:green>[COMPLETED] }
+        --
+        { <size:10>No. Transaksi     | <size:10>Tanggal | <size:10>Customer | <size:10>Total
+          <b>TRX-20261029-00042   | 29/10/2026 14:32  | Budi Santoso      | <b>Rp 310.000 }
+      }
+      {+
+        { <color:green><&check></color> <b>Transaksi dapat di-void | . | <&clock> <color:green><b>Sisa waktu: 24:13
+          <size:10>Semua item akan dibatalkan dan stok dikembalikan | . | . }
+      }
+      .
+      {+
+        <b>Item Transaksi
+        <size:10>Semua item di bawah akan dibatalkan jika void dilakukan
+        --
+        {#
+          <b>Produk              | <b>Satuan | <b>Qty | <b>Harga Satuan | <b>Subtotal
+          Kopi Kapal Api 165g    | Karton    | 1      | Rp 280.000      | Rp 280.000
+          Gula Pasir 1kg         | Pcs       | 2      | Rp 15.000       | Rp 30.000
+          .                      | .         | .      | <b>Total        | <b>Rp 310.000
+        }
+      }
+      .
+      { . | . | . | . | [ <&ban> Void Transaksi ] }
+      .
+      {+
+        <color:blue><&reload> <b>Menunggu persetujuan pemilik…
+        <size:10>Pengajuan sudah dikirim. Pemilik akan menerima notifikasi dan melakukan konfirmasi.
+      }
+    }
+  }
+}
+@endsalt

@@ -1,0 +1,29 @@
+@startsalt WF-23_Persetujuan_Void
+' Sumber: laravel-app/resources/views/owner/void-approval.blade.php
+' Daftar pengajuan diperbarui otomatis via WebSocket saat kasir mengajukan void baru.
+!include _layout.iuml
+!$active = "Persetujuan Void"
+title WF-23: Halaman Persetujuan Void Transaksi (Owner)
+{+
+  {
+    $sidebar_owner() | {
+      $header("Persetujuan Void Transaksi")
+      .
+      {+
+        <color:orange><&warning> <b>Persetujuan harus diberikan sebelum batas waktu habis.
+        <size:10>Menyetujui void akan membatalkan semua item transaksi dan mengembalikan stok ke gudang. Tindakan ini tidak dapat dibatalkan.
+      }
+      .
+      {+
+        { <b>Pengajuan Void Menunggu Persetujuan | . | . | [<&reload> Refresh] }
+        --
+        {#
+          <b>No. Transaksi      | <b>Kasir | <b>Alasan                          | <b>Total       | <b>Sisa Waktu              | <b>Aksi
+          TRX-20261029-00042    | Siti     | Kesalahan Input Data               | Rp 310.000     | <color:green><b>24:13      | [<&eye> Tinjau]
+          TRX-20261029-00038    | Dewi     | Permintaan Pembeli                 | Rp 128.000     | <color:orange><b>03:42     | [<&eye> Tinjau]
+        }
+      }
+    }
+  }
+}
+@endsalt

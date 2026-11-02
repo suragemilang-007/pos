@@ -1,0 +1,34 @@
+@startsalt WF-06_Pantau_Stok
+' Sumber: laravel-app/resources/views/kasir/stok.blade.php
+' Baris tabel diperbarui otomatis via WebSocket (stok-updated) dengan efek flash.
+!include _layout.iuml
+!$active = "Pantau Stok"
+title WF-06: Halaman Pantau Stok Real-Time
+{+
+  {
+    $sidebar_kasir() | {
+      $header("Pantau Stok Real-Time")
+      .
+      {+
+        { "<&magnifying-glass> Cari nama produk atau scan barcode...   " | ^Semua Kategori^ | ^Semua Stok^ }
+      }
+      .
+      {+
+        { <b>Inventori Stok | . | <color:red>●</color> 2 habis | <color:orange>●</color> 5 rendah | <color:green>●</color> 120 normal
+          <size:10>Update otomatis via WebSocket — tidak perlu refresh halaman | . | . | . | . }
+        --
+        {#
+          <b>Kode   | <b>Nama Produk        | <b>Kategori | <b>Sat. Dasar | <b>Stok <&elevator> | <b>Min | <b>Status          | <b>Detail
+          KP-0001   | Kopi Kapal Api 165g   | Minuman    | pcs           | 960                 | 50     | <color:green>Normal  | [<&chevron-bottom>]
+          .         | <size:10>└ Renteng (isi 10) = 96 renteng · Karton (isi 96) = 10 karton | * | * | * | * | * | *
+          GP-0002   | Gula Pasir 1kg        | Sembako    | pcs           | 8                   | 20     | <color:orange>Rendah | [<&chevron-right>]
+          MG-0003   | Minyak Goreng 2L      | Sembako    | pcs           | 0                   | 10     | <color:red>Habis     | [<&chevron-right>]
+          ...       | ...                   | ...        | ...           | ...                 | ...    | ...                  | .
+        }
+      }
+      .
+      { <size:10>■ Stok habis (= 0) | <size:10>■ Stok rendah (≤ minimum) | <size:10>□ Normal }
+    }
+  }
+}
+@endsalt

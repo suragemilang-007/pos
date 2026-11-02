@@ -1,0 +1,33 @@
+@startsalt WF-15b_Modal_Supplier
+' Sumber: laravel-app/resources/views/gudang/supplier/index.blade.php (#modal-form, #modal-hapus)
+' Pesan modal hapus bergantung has_pembelian dari API:
+'   true  → nonaktifkan (soft delete), false → hapus permanen.
+title WF-15b: Modal Tambah/Edit Supplier & Konfirmasi Hapus
+{
+  {+
+    { <b>Tambah Supplier | . | [×] }
+    ==
+    Nama Supplier <color:red>*
+    "Contoh: PT Sinar Makmur               "
+    Kontak Person <size:10>(opsional)
+    "Nama PIC yang bisa dihubungi          "
+    No. Telp <color:red>*
+    "Contoh: 0812-3456-7890                "
+    Alamat <size:10>(opsional)
+    {+
+      "Alamat lengkap supplier...           "
+      "                                     "
+    }
+    --
+    { . | [ Batal ] | [ Simpan ] }
+  } | . | {+
+    <b>Nonaktifkan Supplier
+    ==
+    <color:orange><&warning></color> Supplier <b>PT Sinar Makmur</b> memiliki
+    riwayat pembelian dan akan dinonaktifkan.
+    <size:10>Data pembelian lama tetap tersimpan.
+    --
+    { . | [ Batal ] | [ Ya, Lanjutkan ] }
+  }
+}
+@endsalt

@@ -1,0 +1,36 @@
+@startsalt WF-05_Dashboard_Kasir
+' Sumber: laravel-app/resources/views/kasir/dashboard.blade.php
+!include _layout.iuml
+!$active = "Kasir"
+title WF-05: Halaman Dashboard Kasir
+{+
+  {
+    $sidebar_kasir() | {
+      $header("Dashboard")
+      .
+      { . | . | [<&plus> Transaksi Baru] | . | . }
+      .
+      {
+        {+ Transaksi Hari Ini
+           <b>42 } | {+ Omzet Hari Ini
+           <b>Rp 3.450.000 } | {+ Stok Rendah          <&chevron-right>
+           <b>5 <color:red>[Perlu Restock] } | {+ Transaksi Terakhir
+           <b>14:32
+           <size:10>jam hari ini }
+      }
+      .
+      {+
+        <b>10 Transaksi Terakhir
+        --
+        {#
+          <b>No Transaksi        | <b>Waktu | <b>Total      | <b>Metode | <b>Status    | <b>Aksi
+          TRX-20261029-00042     | 14:32    | Rp 310.000   | Tunai     | COMPLETED    | [Detail]
+          TRX-20261029-00041     | 14:20    | Rp 85.000    | QRIS      | COMPLETED    | [Detail]
+          TRX-20261029-00040     | 14:05    | Rp 1.250.000 | Transfer  | VOIDED       | [Detail]
+          ...                    | ...      | ...          | ...       | ...          | .
+        }
+      }
+    }
+  }
+}
+@endsalt

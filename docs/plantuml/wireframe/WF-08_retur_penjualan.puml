@@ -1,0 +1,62 @@
+@startsalt WF-08_Retur_Penjualan
+' Sumber: laravel-app/resources/views/kasir/retur-penjualan.blade.php
+' Menu ini ada di grup MANAJEMEN sidebar (khusus owner).
+!include _layout.iuml
+!$active = "Retur Penjualan"
+title WF-08: Halaman Retur Penjualan
+{+
+  {
+    $sidebar_owner() | {
+      $header("Retur Penjualan")
+      .
+      {+
+        <color:blue><&info> Hanya transaksi berstatus <b>COMPLETED</b> yang dapat diretur.
+        <size:10>Masukkan nomor transaksi (TRX-...) atau ID angka.
+      }
+      .
+      {+
+        <b>1. Cari Transaksi Asal
+        --
+        { "TRX-20260424-00001 atau ID angka...          " | [ Cari ] }
+      }
+      .
+      {+
+        { <b>2. Transaksi Asal | . | . | <color:green>[COMPLETED] }
+        --
+        { <size:10>No. Transaksi     | <size:10>Tanggal | <size:10>Kasir | <size:10>Total Transaksi
+          <b>TRX-20261029-00042   | 29/10/2026 14:32  | Siti           | <b>Rp 310.000 }
+      }
+      .
+      {+
+        <b>Pilih Item yang Diretur
+        <size:10>Centang item, isi jumlah yang diretur. Qty tidak boleh melebihi qty beli.
+        --
+        {#
+          [X] <b>Produk               | <b>Satuan | <b>Harga   | <b>Qty Beli | <b>Qty Retur | <b>Subtotal Refund
+          [X] Kopi Kapal Api 165g      | Karton    | Rp 280.000 | 1           | "1    "      | Rp 280.000
+          [] Gula Pasir 1kg            | Pcs       | Rp 15.000  | 2           | "0    "      | Rp 0
+        }
+        --
+        { <b>1</b> item dipilih | . | . | Estimasi Refund
+          .                     | . | . | <color:green><b>Rp 280.000 }
+      }
+      .
+      {+
+        <b>3. Alasan Retur
+        --
+        Alasan <color:red>*
+        {+
+          "Contoh: Produk rusak / kadaluarsa, salah order...  "
+          "                                                    "
+        }
+      }
+      .
+      { [← Cari Transaksi Lain] | . | . | . | [ Proses Retur ] }
+      {+
+        <color:orange><&reload> <b>Memproses retur...
+        <size:10>Consumer sedang mengembalikan stok ke gudang. Harap tunggu.
+      }
+    }
+  }
+}
+@endsalt

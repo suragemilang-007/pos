@@ -1,0 +1,59 @@
+@startuml SD-16a_Tambah_Kategori
+title SD-16a: Tambah Kategori Produk
+autonumber
+skinparam sequenceMessageAlign center
+skinparam responseMessageBelowArrow true
+
+actor "Admin Gudang / Owner" as U
+boundary "View Kategori\n(Blade + Axios)" as V
+control "Middleware\n(auth.jwt, role)" as M
+control "KategoriProdukController" as C
+control "StoreKategoriRequest" as R
+control "KategoriProdukService" as S
+entity "KategoriProduk" as K
+database "MySQL\n(kategori_produk)" as DB
+
+U -> V : Klik "Tambah Kategori"
+V -> V : bukaModalTambah()\nform kosong
+U -> V : Isi nama_kategori, deskripsi\nklik "Simpan"
+V -> V : simpanKategori()\ncek nama tidak kosong
+
+alt Nama kosong
+    V --> U : Error inline "Nama kategori wajib diisi"
+else Nama terisi
+    V -> M : POST /api/gudang/kategori\n{nama_kategori, deskripsi}
+    M -> M : Validasi token JWT & role
+    alt Token tidak valid / role tidak diizinkan
+        M --> V : 401 / 403
+        V --> U : Toast "Gagal menyimpan"
+    else Lolos
+        M -> C : store(request)
+        C -> R : rules()\nrequired, max:100, unique
+        R -> DB : SELECT nama_kategori (cek unique)
+        DB --> R : hasil
+        alt Validasi gagal (duplikat / > 100 karakter)
+            R --> V : 422 {message, errors.nama_kategori}
+            V --> U : Error inline di bawah field nama
+        else Valid
+            C -> S : create(validated)
+            S -> K : KategoriProduk::create(...)
+            K -> DB : INSERT INTO kategori_produk
+            DB --> K : id baru
+            K --> S : objek KategoriProduk
+            S --> C : KategoriProduk
+            C --> V : 201 {data, message:\n"Kategori berhasil ditambahkan"}
+            V -> V : tutupModalForm()
+            V --> U : Toast sukses
+            V -> M : GET /api/gudang/kategori (loadKategori)
+            M -> C : indexWithCount()
+            C -> S : getAll()
+            S -> DB : SELECT ... withCount(produk as jumlah_produk)\nORDER BY nama_kategori
+            DB --> S : daftar kategori
+            S --> C : Collection
+            C --> V : 200 {data}
+            V --> U : Tabel kategori diperbarui
+        end
+    end
+end
+
+@enduml

@@ -1,0 +1,38 @@
+@startsalt WF-18_Hutang_Dagang
+' Sumber: laravel-app/resources/views/gudang/hutang/index.blade.php
+' Status pembayaran: lunas | belum_lunas | sebagian.
+!include _layout.iuml
+!$active = "Hutang Dagang"
+title WF-18: Halaman Hutang Dagang
+{+
+  {
+    $sidebar_gudang() | {
+      $header("Hutang Dagang")
+      .
+      {
+        {+ <color:red><&credit-card></color> <size:10><b>TOTAL HUTANG
+           <color:red><b>Rp 9.640.000 } | {+ <color:orange><&clock></color> <size:10><b>PO JATUH TEMPO < 3 HARI
+           <color:orange><b>2 } | {+ <&briefcase> <size:10><b>SUPPLIER BERUTANG
+           <b>3 }
+      }
+      .
+      {+
+        { .                | .             | <size:10>Jatuh Tempo Dari | <size:10>Jatuh Tempo Sampai
+          ^Semua Supplier^ | ^Belum Lunas^ | "dd/mm/yyyy      "         | "dd/mm/yyyy      " }
+      }
+      .
+      {+
+        {#
+          <b>No. PO          | <b>Supplier        | <b>Total       | <b>Sudah Dibayar | <b>Sisa Hutang          | <b>Jatuh Tempo          | <b>Status                  | <b>Aksi
+          PO-20261029-0012   | PT Sinar Makmur    | Rp 1.322.000   | Rp 0             | <color:red>Rp 1.322.000 | 28/11/2026              | <color:red>Belum Lunas     | [Bayar]
+          PO-20261015-0007   | CV Sumber Rejeki   | Rp 5.000.000   | Rp 2.000.000     | <color:red>Rp 3.000.000 | <color:orange>31/10/2026 | <color:orange>Sebagian    | [Bayar]
+          PO-20260930-0004   | PT Sinar Makmur    | Rp 2.400.000   | Rp 2.400.000     | Rp 0                    | 30/10/2026              | <color:green>Lunas         | .
+          ...                | ...                | ...            | ...              | ...                     | ...                     | ...                        | .
+        }
+        --
+        { <size:10>Menampilkan 1–10 dari 12 PO | . | . | { [<] | [1] | [2] | [>] } }
+      }
+    }
+  }
+}
+@endsalt

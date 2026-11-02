@@ -1,0 +1,25 @@
+@startsalt WF-23b_Modal_Tinjau_Void
+' Sumber: laravel-app/resources/views/owner/void-approval.blade.php (#modal-detail)
+' "Setujui Void" memicu event Kafka void → Consumer mengembalikan stok
+' → WebSocket void.completed ke layar kasir (WF-07).
+title WF-23b: Modal Tinjau Pengajuan Void
+{+
+  { <b>TRX-20261029-00042 | . | [×]
+    <size:10>Diajukan oleh: Siti | . | . }
+  ==
+  {+
+    <color:orange><size:10>Alasan Void
+    <b>Kesalahan Input Data
+    <color:orange><size:10><i>Kasir salah memasukkan qty kopi
+  }
+  .
+  {#
+    <b>Produk                  | <b>Qty        | <b>Subtotal
+    Kopi Kapal Api 165g        | 1 Karton      | Rp 280.000
+    Gula Pasir 1kg             | 2 Pcs         | Rp 30.000
+    .                          | <b>Total      | <b>Rp 310.000
+  }
+  --
+  { . | . | [ <&x> Tolak ] | [ <&check> Setujui Void ] }
+}
+@endsalt

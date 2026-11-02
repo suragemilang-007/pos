@@ -1,0 +1,63 @@
+@startsalt WF-04_Laporan_Owner
+' Sumber: laravel-app/resources/views/owner/laporan/index.blade.php
+'         laravel-app/resources/views/layouts/app.blade.php + sidebar.blade.php
+' Tab aktif yang digambar: Penjualan (tab lain memakai pola filter → kartu → tabel yang sama)
+!include _layout.iuml
+!$active = "Laporan"
+title WF-04: Halaman Laporan (Owner) — Tab Penjualan
+{+
+  {
+    $sidebar_owner() | {
+      $header("Laporan")
+      ' ── Tab jenis laporan ──
+      {/ <b>Penjualan | Stok | Pembelian | Hutang Dagang | Penyesuaian Stok }
+      .
+      ' ── Filter periode ──
+      {+
+        { Dari Tanggal     | Sampai Tanggal   | .
+          "dd/mm/yyyy    " | "dd/mm/yyyy    " | [<&bar-chart> Generate] }
+      }
+      .
+      ' ── Kartu metrik ──
+      {
+        {+ <size:10>Omzet
+           <b>Rp 12.500.000
+           <size:10>total pendapatan } | {+ <size:10>Jumlah Transaksi
+           <b>148
+           <size:10>transaksi selesai } | {+ <size:10>Profit Kotor
+           <color:green><b>Rp 2.100.000
+           <size:10>margin 16,8% } | {+ <size:10>Rata-rata/Transaksi
+           <b>Rp 84.459
+           <size:10>per transaksi selesai }
+      }
+      .
+      ' ── Grafik ──
+      {
+        {+ <b>Omzet per Hari
+           <size:10>01 Okt 2026 – 29 Okt 2026
+           .
+           [          [ Line Chart Omzet Harian ]          ]
+           .
+        } | {+ <b>Metode Pembayaran
+           <size:10>Distribusi berdasarkan omzet
+           [ ( Pie Chart ) ]
+           <size:10>■ Tunai  ■ Transfer  ■ QRIS
+        }
+      }
+      .
+      ' ── Tabel produk terlaris ──
+      {+
+        { <b>Top 10 Produk Terlaris | . | [<&data-transfer-download> Excel/CSV] | [<&print> Print PDF] }
+        --
+        {#
+          <b>#  | <b>Nama Produk          | <b>Satuan | <b>Qty Terjual | <b>Total Omzet
+          1     | Kopi Kapal Api 165g      | pcs       | 320           | Rp 1.120.000
+          2     | Gula Pasir 1kg           | pcs       | 210           | Rp 3.150.000
+          3     | Minyak Goreng 2L         | pcs       | 95            | Rp 3.325.000
+          ...   | ...                      | ...       | ...           | ...
+        }
+      }
+    }
+  }
+}
+@endsalt

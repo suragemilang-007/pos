@@ -1,0 +1,34 @@
+@startsalt WF-18b_Modal_Bayar_Hutang
+' Sumber: laravel-app/resources/views/gudang/hutang/index.blade.php (#modal-bayar)
+' Pembayaran hutang bersifat SINKRON (POST /api/gudang/pembelian/{id}/bayar),
+' tidak melalui Kafka karena tidak mengubah stok.
+title WF-18b: Modal Catat Pembayaran Hutang
+{+
+  { <b>Catat Pembayaran Hutang | . | [×]
+    <size:10>PO-20261015-0007 · CV Sumber Rejeki | . | . }
+  ==
+  {
+    {+ <size:10><b>TOTAL PO
+       <b>Rp 5.000.000 } | {+ <color:green><size:10><b>SUDAH BAYAR
+       <color:green><b>Rp 2.000.000 } | {+ <color:red><size:10><b>SISA HUTANG
+       <color:red><b>Rp 3.000.000 } | {+ <color:orange><size:10><b>JATUH TEMPO
+       <color:orange><size:10><b>31/10/2026 }
+  }
+  .
+  <size:10><b>RIWAYAT PEMBAYARAN SEBELUMNYA
+  {#
+    <b>Tanggal  | <b>Metode   | <b>Jumlah      | <b>Catatan
+    15/10/2026  | Cash       | Rp 2.000.000   | DP awal
+  }
+  .
+  Jumlah Bayar (Rp) <color:red>*
+  "Rp 0                                                  "
+  { <size:10>Sisa setelah bayar: Rp 3.000.000 | . | <color:blue><size:10>Lunasi penuh }
+  { Metode Pembayaran <color:red>* | Tanggal Bayar <color:red>*
+    ^Cash / Tunai          ^       | "dd/mm/yyyy        " }
+  Catatan <size:10>(opsional)
+  "No. ref transfer, nama bank, dll.                     "
+  --
+  { . | . | [ Batal ] | [ Catat Pembayaran ] }
+}
+@endsalt

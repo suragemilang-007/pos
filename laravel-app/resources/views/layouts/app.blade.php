@@ -193,6 +193,11 @@ function connectWebSocket() {
         if (authUser && authUser.id) {
             wsConn.send(JSON.stringify({ action: 'subscribe', channel: 'user-' + authUser.id }));
         }
+
+        // Subscribe ke void-requests — owner perlu tahu ada pengajuan void baru dari kasir
+        if (authRole === 'owner') {
+            wsConn.send(JSON.stringify({ action: 'subscribe', channel: 'void-requests' }));
+        }
     });
 
     wsConn.addEventListener('message', function (e) {
@@ -246,6 +251,12 @@ function handleWsEvent(data) {
             showToast('success', 'Retur Pembelian Selesai',
                 'Kredit: Rp ' + formatRupiah(data.nilaiKredit || 0));
             document.dispatchEvent(new CustomEvent('ws:return-purchase-completed', { detail: data }));
+            break;
+        case 'void.submitted':
+            // Notifikasi ke owner saat kasir mengajukan void (dari channel void-requests)
+            showToast('warning', 'Pengajuan Void Baru',
+                'No. ' + (data.noTransaksi || '') + ' menunggu persetujuan Anda.');
+            document.dispatchEvent(new CustomEvent('ws:void-submitted', { detail: data }));
             break;
         case 'void.completed':
             showToast('warning', 'Transaksi Di-void',

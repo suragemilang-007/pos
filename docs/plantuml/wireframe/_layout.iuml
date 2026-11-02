@@ -1,0 +1,105 @@
+' ════════════════════════════════════════════════════════════════════════════
+' Komponen layout bersama untuk semua wireframe (Salt).
+' Sumber: laravel-app/resources/views/layouts/app.blade.php + sidebar.blade.php
+'
+' Pemakaian di file wireframe:
+'   !include _layout.iuml
+'   !$active = "Pembelian"        ← menu sidebar yang ditebalkan
+'   ... $sidebar_gudang() | { $header("Judul Halaman") ... }
+'
+' Sidebar dibedakan per role karena sidebar.blade.php menyembunyikan grup
+' menu berdasarkan data-roles (kasir / admin_gudang / owner).
+' ════════════════════════════════════════════════════════════════════════════
+
+!$active = ""
+
+' Satu item menu; ditebalkan jika label = $active
+!procedure $nav($icon, $label)
+!if ($label == $active)
+      <b><&$icon> $label
+!else
+      <&$icon> $label
+!endif
+!endprocedure
+
+!procedure $brand()
+      <&cart> <b>Toko Melati</b>
+      <size:10>Point of Sales
+      ==
+!endprocedure
+
+!procedure $user_box($inisial, $nama, $role)
+      ==
+      { ($inisial) | $nama | [<&account-logout>]
+        .          | <size:10>$role | . }
+!endprocedure
+
+!procedure $grup_transaksi()
+      <size:10><b>TRANSAKSI
+      $nav("cart", "Kasir")
+      $nav("clipboard", "Pantau Stok")
+      $nav("ban", "Void Transaksi")
+!endprocedure
+
+!procedure $grup_inventori()
+      <size:10><b>INVENTORI
+      $nav("home", "Dashboard Gudang")
+      $nav("box", "Data Produk")
+      $nav("tag", "Kategori Produk")
+      $nav("document", "Pembelian")
+      $nav("briefcase", "Supplier")
+      $nav("clipboard", "Pantau Stok ")
+      $nav("credit-card", "Hutang Dagang")
+      $nav("wrench", "Penyesuaian Stok")
+!endprocedure
+
+!procedure $grup_manajemen()
+      <size:10><b>MANAJEMEN
+      $nav("dashboard", "Dashboard")
+      $nav("list", "Daftar Transaksi")
+      $nav("action-undo", "Retur Penjualan")
+      $nav("circle-check", "Persetujuan Void")
+      $nav("bar-chart", "Laporan")
+      $nav("people", "Data Customer")
+      $nav("person", "Kelola User")
+!endprocedure
+
+' ── Sidebar per role ────────────────────────────────────────────────────────
+!procedure $sidebar_kasir()
+    {+
+      $brand()
+      $grup_transaksi()
+      .
+      .
+      .
+      .
+      $user_box("K", "Nama Kasir", "kasir")
+    }
+!endprocedure
+
+!procedure $sidebar_gudang()
+    {+
+      $brand()
+      $grup_inventori()
+      .
+      .
+      .
+      $user_box("A", "Nama Admin", "admin_gudang")
+    }
+!endprocedure
+
+!procedure $sidebar_owner()
+    {+
+      $brand()
+      $grup_transaksi()
+      $grup_inventori()
+      $grup_manajemen()
+      $user_box("O", "Nama Owner", "owner")
+    }
+!endprocedure
+
+' ── Header halaman (judul + indikator WebSocket + toggle tema) ─────────────
+!procedure $header($judul)
+      { <b>$judul | . | <&media-record> Terhubung | [<&moon>] }
+      ==
+!endprocedure

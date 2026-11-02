@@ -1,0 +1,59 @@
+@startsalt WF-24b_Modal_User
+' Sumber: laravel-app/resources/views/owner/user/index.blade.php
+'         (#modal-tambah, #modal-edit, #modal-reset, #modal-nonaktif)
+' Password di-hash bcrypt di backend; form Edit sengaja tanpa field password.
+title WF-24b: Modal Tambah, Edit, Reset Password & Nonaktifkan User
+{
+  {+
+    { <b>Tambah User | . | [×] }
+    ==
+    Nama Lengkap <color:red>*
+    "Contoh: Budi Santoso            "
+    Username <color:red>*
+    { "Contoh: budi.kasir       " | <color:green><&check> }
+    Password <color:red>*
+    { "Min. 8 karakter          " | [<&eye>] }
+    Konfirmasi Password <color:red>*
+    { "Ulangi password          " | [<&eye>] }
+    Role <color:red>*
+    ^Pilih Role                     ^
+    --
+    { . | [ Batal ] | [ Simpan ] }
+  } | . | {+
+    { <b>Edit User | . | [×] }
+    ==
+    Nama Lengkap <color:red>*
+    "Siti Rahma                      "
+    Username <color:red>*
+    "siti.kasir                      "
+    Role <color:red>*
+    ^Kasir                          ^
+    {+
+      <color:blue><&info> <size:10>Untuk mengubah password, gunakan
+      <color:blue><size:10>tombol <b>Reset Password</b> pada baris user.
+    }
+    --
+    { . | [ Batal ] | [ Perbarui ] }
+  }
+  .     | . | .
+  {+
+    { <b>Reset Password | . | [×]
+      <size:10>Siti Rahma (siti.kasir) | . | . }
+    ==
+    Password Baru <color:red>*
+    { "Min. 8 karakter          " | [<&eye>] }
+    Konfirmasi Password Baru <color:red>*
+    { "Ulangi password baru     " | [<&eye>] }
+    --
+    { . | [ Batal ] | [ Reset Password ] }
+  } | . | {+
+    <b>Nonaktifkan User
+    ==
+    <color:red><&warning></color> Nonaktifkan user <b>Siti Rahma</b>?
+    <size:10>Semua sesi aktif user ini akan dihapus dan user
+    <size:10>tidak dapat login sampai diaktifkan oleh owner.
+    --
+    { . | [ Batal ] | [ Ya, Nonaktifkan ] }
+  }
+}
+@endsalt

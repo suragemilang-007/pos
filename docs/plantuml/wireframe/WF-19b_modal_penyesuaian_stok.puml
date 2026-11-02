@@ -1,0 +1,59 @@
+@startsalt WF-19b_Modal_Penyesuaian_Stok
+' Sumber: laravel-app/resources/views/gudang/penyesuaian-stok/index.blade.php (#modal-penyesuaian)
+' Modal dua langkah. Untuk tipe pengurangan, qty divalidasi ≤ stok saat ini
+' agar stok tidak negatif (dicek ulang oleh Consumer).
+title WF-19b: Modal Penyesuaian Stok (Langkah 1 & Langkah 2)
+{
+  {+
+    { <b>Penyesuaian Stok | . | [×]
+      <color:blue><size:10>Langkah 1 dari 2 — Pilih Produk | . | . }
+    ==
+    { <b>(1)</b> ━━━━━━━━━━━━ (2)
+      <color:blue><size:10>Pilih Produk</color>            <size:10>Isi Penyesuaian }
+    .
+    Kode Barcode atau Nama Produk <color:red>*
+    "<&barcode> Scan barcode atau ketik nama produk...  "
+    <size:10>Tekan Enter untuk cari via kode · ketik ≥ 2 karakter untuk autocomplete
+    .
+    {+
+      { <&box> | <b>Minyak Goreng 2L | [Ganti]
+        .      | <size:10>MG-0003     | . }
+      --
+      { <size:10>Stok saat ini | . | <b>48</b> pcs }
+    }
+    [       Lanjut Isi Penyesuaian →       ]
+    --
+    { . | . | [ Batal ] }
+  } | . | {+
+    { <b>Penyesuaian Stok | . | [×]
+      <color:blue><size:10>Langkah 2 dari 2 — Isi Penyesuaian | . | . }
+    ==
+    { <&box> Minyak Goreng 2L · <size:10>Stok: 48 pcs | [← Ganti] }
+    .
+    <b>Tipe Penyesuaian <color:red>*
+    <size:10><b>PENGURANGAN STOK
+    (X) <b>Rusak</b> <size:10>— rusak fisik di gudang (bukan dari supplier)
+    () <b>Hilang</b> <size:10>— tidak ditemukan saat opname
+    () <b>Expired</b> <size:10>— melewati tanggal kadaluarsa
+    () <b>− Koreksi</b> <size:10>— stok sistem > stok fisik
+    <size:10><b>PENAMBAHAN STOK
+    () <b>+ Koreksi</b> <size:10>— stok sistem < stok fisik
+    .
+    <b>Jumlah</b> (satuan dasar) <color:red>*
+    { "5        " | pcs }
+    <size:10>Selalu positif — arah stok ditentukan oleh tipe di atas.
+    <b>Keterangan <color:red>* <size:10>(wajib, min. 5 karakter)
+    {+
+      "Kemasan bocor akibat atap gudang       "
+      "                                       "
+    }
+    {+
+      <size:10><b>PREVIEW PERUBAHAN
+      Stok berkurang 5 pcs (Rusak)
+      { <b>48 | → | <color:red><b>43</color> pcs }
+    }
+    --
+    { [← Kembali] | . | [ Batal ] | [ Simpan Penyesuaian ] }
+  }
+}
+@endsalt

@@ -1,0 +1,24 @@
+@startsalt WF-01_Login
+' Sumber: laravel-app/resources/views/auth/login.blade.php
+title WF-01: Halaman Login
+{
+  {+
+    <&cart> <b>Toko Melati</b>          | [<&moon>]
+    Sistem Point of Sales Grosir        | .
+  }
+  .
+  {+
+    <color:red>[x] Pesan error (tampil jika login gagal)
+    .
+    Username
+    "Masukkan username              "
+    .
+    Password
+    { "Masukkan password         " | [<&eye>] }
+    .
+    [               Masuk               ]
+  }
+  .
+  <size:10>Toko Melati © 2026 — Sistem POS Grosir
+}
+@endsalt

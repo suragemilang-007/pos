@@ -1,0 +1,52 @@
+@startsalt WF-13_Form_Produk
+' Sumber: laravel-app/resources/views/gudang/produk/form.blade.php
+' Form yang sama dipakai untuk Tambah & Edit; field "Stok Awal" hanya muncul saat tambah.
+!include _layout.iuml
+!$active = "Data Produk"
+title WF-13: Halaman Tambah / Edit Produk
+{+
+  {
+    $sidebar_gudang() | {
+      $header("Tambah Produk")
+      <size:10>Data Produk / <b>Tambah Produk Baru
+      .
+      {+
+        <b>Data Utama Produk
+        <size:10>Informasi dasar identitas produk
+        --
+        { Kode Produk <color:red>*                        | Nama Produk <color:red>*
+          "Contoh: KPI-165G          "                    | "Contoh: Kopi Kapal Api 165g   "
+          <size:10>Maks 20 karakter, harus unik           | .
+          Kategori <color:red>*                           | Satuan Dasar <color:red>*
+          ^Pilih Kategori            ^                    | "Contoh: pcs, gram, ml, lembar "
+          .                                               | <size:10>Satuan terkecil. Stok selalu disimpan dalam satuan ini.
+          Harga Beli Dasar <color:red>*                   | Stok Minimum <color:red>*
+          "Rp 0                      "                    | "0                             "
+          <size:10>Per 1 satuan dasar                     | <size:10>Peringatan stok rendah di bawah angka ini
+          Stok Awal                                       | .
+          "0                         "                    | .
+          <size:10>Tidak bisa diubah setelah produk dibuat | . }
+        Deskripsi <size:10>(opsional)
+        {+
+          "Keterangan tambahan tentang produk ini...                          "
+          "                                                                   "
+        }
+      }
+      .
+      {+
+        { <b>Kelola Satuan | . | [<&plus> Tambah Satuan]
+          <size:10>Tepat 1 satuan harus default · Satuan = satuan dasar harus isi = 1 | . | . }
+        --
+        {#
+          <b>Nama Satuan | <b>Isi (× dasar) | <b>Harga Beli  | <b>Harga Jual  | <b>Default | <b>Barcode     | .
+          "pcs      "    | "1    "          | "Rp 3.000    " | "Rp 3.500    " | (X)        | "8991002101 "  | [×]
+          "renteng  "    | "10   "          | "Rp 29.000   " | "Rp 31.500   " | ()         | "8991002102 "  | [×]
+          "karton   "    | "96   "          | "Rp 250.000  " | "Rp 280.000  " | ()         | "8991002103 "  | [×]
+        }
+      }
+      .
+      { [← Kembali] | . | . | . | . | [  Buat Produk  ] }
+    }
+  }
+}
+@endsalt

@@ -1,0 +1,24 @@
+@startsalt WF-07b_Modal_Ajukan_Void
+' Sumber: laravel-app/resources/views/kasir/void-transaksi.blade.php (#modal-void)
+title WF-07b: Modal Ajukan Void ke Pemilik
+{+
+  { <b>Ajukan Void ke Pemilik | . | [×]
+    <size:10>TRX-20261029-00042 · Rp 310.000 | . | . }
+  ==
+  {+
+    <color:red><&warning> Tindakan ini akan membatalkan <b>semua item</b> dan tidak dapat dibatalkan.
+    <color:red><size:10>Stok akan dikembalikan ke gudang secara otomatis.
+  }
+  .
+  Alasan Void <color:red>*
+  ^Pilih alasan                                      ^
+  .
+  Keterangan <size:10>(opsional, wajib jika alasan "Lainnya")
+  {+
+    "Detail tambahan...                                "
+    "                                                  "
+  }
+  --
+  { . | . | [ Batal ] | [ Ajukan ke Pemilik ] }
+}
+@endsalt

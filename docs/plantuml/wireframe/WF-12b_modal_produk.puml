@@ -1,0 +1,37 @@
+@startsalt WF-12b_Modal_Produk
+' Sumber: laravel-app/resources/views/gudang/produk/index.blade.php (#modal-penjualan, #modal-hapus)
+' Modal hapus memakai pola soft delete: produk yang pernah dipakai transaksi
+' hanya dinonaktifkan (status = nonaktif), bukan dihapus permanen.
+title WF-12b: Modal Riwayat Penjualan Produk & Konfirmasi Hapus
+{
+  {+
+    { <b>Riwayat Penjualan — Kopi Kapal Api 165g | ^2026^ | [×]
+      <size:10>Jumlah terjual per bulan berdasarkan satuan jual | . | . }
+    ==
+    {
+      {+ <size:10>Total Terjual
+         <b>1.240
+         <size:10>pcs } | {+ <size:10>Total Pendapatan
+         <b>Rp 4.180.000
+         <size:10>dari transaksi } | {+ <size:10>Bulan Terlaris
+         <b>Agustus
+         <size:10>182 pcs }
+    }
+    .
+    {+
+      .
+      [     [ Grafik Batang Penjualan per Bulan ]     ]
+      .
+    }
+  } | . | {+
+    <b>Hapus Produk
+    ==
+    <color:orange><&warning></color> <b>Produk akan dinonaktifkan
+    Kopi Kapal Api 165g memiliki riwayat transaksi.
+    <size:10>Produk tidak dapat dihapus permanen karena masih ada
+    <size:10>di riwayat transaksi.
+    --
+    { . | [ Batal ] | [ Konfirmasi ] }
+  }
+}
+@endsalt

@@ -1,0 +1,62 @@
+@startsalt WF-02_Transaksi_Kasir
+' Sumber: laravel-app/resources/views/kasir/transaksi.blade.php
+'         laravel-app/resources/views/layouts/kasir.blade.php (layout tanpa sidebar)
+title WF-02: Halaman Transaksi Penjualan (Kasir)
+{+
+  ' ── Header kasir ──
+  { <&cart> <b>Toko Melati</b> / Transaksi | . | <&media-record> Terhubung | Nama Kasir | [<&moon>] | [← Dashboard] }
+  ==
+  {
+    ' ── Panel kiri: scan produk + customer ──
+    {
+      {+
+        <b>SCAN / KETIK KODE / NAMA PRODUK
+        { "Scan barcode, kode, atau nama produk...  " | [Cari] }
+      }
+      .
+      {+
+        { <size:10>KP-0001 | . | <color:orange>[Stok Menipis] }
+        <b>Kopi Kapal Api 165g
+        --
+        { Satuan             | Jumlah (Qty)
+          ^Karton (hemat 16%)^ | "1        "
+          <color:green><size:10>Hemat 16% dibanding satuan dasar | <size:10>Tersedia: 10 Karton }
+        --
+        { Harga per satuan | . | Subtotal
+          <b>Rp 280.000    | . | <b>Rp 280.000 }
+        [            <&plus> Tambah ke Keranjang            ]
+      }
+      .
+      {+
+        <b>CUSTOMER (OPSIONAL)
+        "Cari nama / nomor HP customer...         "
+        { <color:blue>Budi Santoso | [× Hapus] }
+      }
+    } | {+
+      ' ── Panel kanan: keranjang + pembayaran ──
+      { <b>Keranjang | . | [3 item] }
+      --
+      {#
+        <b>Produk                       | <b>Subtotal | <b>Qty / Aksi
+        { Kopi Kapal Api 165g
+          <size:10>KP-0001 · Karton
+          <size:10>Rp 280.000 × 1 }      | Rp 280.000  | { [−] | 1 | [+] | [×] }
+        { Gula Pasir 1kg
+          <size:10>GP-0002 · Pcs
+          <size:10>Rp 15.000 × 2 }       | Rp 30.000   | { [−] | 2 | [+] | [×] }
+      }
+      --
+      { Subtotal   | .  | Rp 310.000
+        <b>TOTAL   | .  | <b>Rp 310.000 }
+      --
+      { (X) Tunai | () Transfer | () QRIS }
+      Uang Diterima
+      "0                          "
+      { Kembalian | . | <color:green>Rp 0 }
+      [        Proses Transaksi        ]
+      <color:orange><&clock> Memproses transaksi... (menunggu konfirmasi Kafka)
+      [ Bersihkan Keranjang ]
+    }
+  }
+}
+@endsalt

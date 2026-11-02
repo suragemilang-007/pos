@@ -1,0 +1,42 @@
+@startsalt WF-17b_Modal_Retur_Pembelian
+' Sumber: laravel-app/resources/views/gudang/pembelian/show.blade.php (#modal-retur, #modal-sukses-retur)
+' Retur pembelian dikirim via Kafka (purchase.return.requested); stok dikurangi oleh Consumer.
+title WF-17b: Modal Retur Pembelian & Retur Berhasil
+{
+  {+
+    { <b>Retur Pembelian | . | [×] }
+    ==
+    <color:blue><size:10>Centang item yang diretur, isi qty retur (tidak boleh melebihi qty beli), dan masukkan alasan.
+    --
+    {#
+      [X] <b>Produk            | <b>Satuan | <b>Qty Beli | <b>Qty Retur | <b>Kredit
+      [X] Kopi Kapal Api 165g  | Karton    | 10          | "2    "      | Rp 500.000
+      [] Gula Pasir 1kg        | Pcs       | 50          | "0    "      | Rp 0
+      [] Minyak Goreng 2L      | Pcs       | 10          | "0    "      | Rp 0
+    }
+    --
+    { <b>1</b> item dipilih | . | . | Estimasi Kredit
+      .                     | . | . | <color:green><b>Rp 500.000 }
+    --
+    Alasan Retur <color:red>*
+    {+
+      "Produk rusak, tidak sesuai pesanan, kelebihan pengiriman...   "
+      "                                                               "
+    }
+    <color:orange><&reload> Memproses retur... harap tunggu.
+    --
+    { . | . | [ Batal ] | [ Proses Retur ] }
+  } | . | {+
+    .
+    <color:green><&check></color> <b>Retur Berhasil!
+    <size:10>RPB-20261029-0003
+    {+
+      <size:10>Nilai Kredit ke Supplier
+      <color:green><b>Rp 500.000
+    }
+    <size:10>Stok produk telah dikurangi sesuai qty retur.
+    --
+    { [ Daftar PO ] | [ Tutup ] }
+  }
+}
+@endsalt

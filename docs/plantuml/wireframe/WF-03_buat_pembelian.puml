@@ -1,0 +1,62 @@
+@startsalt WF-03_Buat_Pembelian
+' Sumber: laravel-app/resources/views/gudang/pembelian/create.blade.php
+' PO dikirim via Kafka (purchase.created); status PENDING sampai Consumer selesai.
+!include _layout.iuml
+!$active = "Pembelian"
+title WF-03: Halaman Buat Purchase Order (Admin Gudang)
+{+
+  {
+    $sidebar_gudang() | {
+      $header("Buat PO Baru")
+      <size:10>Pembelian / <b>Buat PO Baru
+      .
+      ' ── Informasi Pembelian ──
+      {+
+        <b>Informasi Pembelian
+        --
+        { Supplier *                    | Tanggal Pembelian *
+          ^Pilih Supplier              ^ | "dd/mm/yyyy   " }
+      }
+      .
+      ' ── Item Pembelian ──
+      {+
+        { <b>Item Pembelian | . | [<&plus> Tambah Item]
+          <size:10>Cari produk, pilih satuan, isi qty dan harga beli | . | . }
+        --
+        {#
+          <b>Produk                  | <b>Satuan    | <b>Qty   | <b>Harga Beli   | <b>Subtotal  | .
+          "Cari produk...         "  | ^Karton   ^  | "5   "   | "Rp 250.000  "  | Rp 1.250.000 | [×]
+          "Cari produk...         "  | ^Pcs      ^  | "24  "   | "Rp 3.000    "  | Rp 72.000    | [×]
+        }
+        --
+        { <b>2</b> item | . | . | Total PO
+          .             | . | . | <b>Rp 1.322.000 }
+      }
+      .
+      ' ── Tipe Pembayaran ──
+      {+
+        <b>Tipe Pembayaran
+        --
+        { () Cash <size:10>(lunas saat diterima) | (X) Kredit <size:10>(bayar nanti / cicilan) }
+        .
+        {
+          .  | { Down Payment (DP) <size:10>(opsional) | Tanggal Jatuh Tempo *
+                 "Rp 0                 "              | "dd/mm/yyyy   "
+               }
+          .  | Catatan Pembayaran <size:10>(opsional)
+          .  | { "Contoh: Net 30, cicil 3x, dll.                       " }
+        }
+        .
+        {#
+          Total PO        | Rp 1.322.000
+          DP Dibayar      | <color:green>Rp 0
+          <b>Sisa Hutang  | <color:red><b>Rp 1.322.000
+          Jatuh Tempo     | <color:orange>28 Nov 2026
+        }
+      }
+      .
+      { [← Batal] | . | . | . | <color:orange><&clock> Memproses PO... | [   Buat PO   ] }
+    }
+  }
+}
+@endsalt

@@ -1,0 +1,37 @@
+@startsalt WF-12_Data_Produk
+' Sumber: laravel-app/resources/views/gudang/produk/index.blade.php
+' Tombol "Satuan (n)" membuka sub-baris daftar satuan (multi-unit pricing).
+!include _layout.iuml
+!$active = "Data Produk"
+title WF-12: Halaman Data Produk
+{+
+  {
+    $sidebar_gudang() | {
+      $header("Data Produk")
+      .
+      {+
+        { "<&magnifying-glass> Cari nama produk...                 " | ^Semua Kategori^ | ^Aktif   ^ | [<&plus> Tambah Produk] }
+      }
+      .
+      {+
+        {#
+          <b>Kode   | <b>Nama Produk        | <b>Kategori | <b>Satuan Dasar | <b>Stok <&elevator> | <b>Status | <b>Aksi
+          KP-0001   | Kopi Kapal Api 165g   | Minuman     | pcs             | 960                 | Aktif     | { [Edit] | [Satuan (3) <&chevron-bottom>] | [Penjualan] | [Hapus] }
+          .         | {+ <size:10><b>Daftar Satuan — Kopi Kapal Api 165g</b>            Kelola Satuan →
+                         {#
+                           <size:10><b>Satuan | <size:10><b>Isi | <size:10><b>Harga Beli | <size:10><b>Harga Jual | <size:10><b>Barcode
+                           <size:10>pcs       | <size:10>1      | <size:10>Rp 3.000     | <size:10>Rp 3.500     | <size:10>8991002101
+                           <size:10>renteng   | <size:10>10     | <size:10>Rp 29.000    | <size:10>Rp 31.500    | <size:10>8991002102
+                           <size:10>karton    | <size:10>96     | <size:10>Rp 250.000   | <size:10>Rp 280.000   | <size:10>8991002103
+                         } } | * | * | * | * | *
+          GP-0002   | Gula Pasir 1kg        | Sembako     | pcs             | { <color:red>8
+                                                                         <color:red><size:10>↓ min 20 } | Aktif | { [Edit] | [Satuan (2) <&chevron-right>] | [Penjualan] | [Hapus] }
+          ...       | ...                   | ...         | ...             | ...                 | ...       | .
+        }
+        --
+        { <size:10>Menampilkan 1–10 dari 127 produk | . | . | { [<] | [1] | [2] | [3] | [>] } }
+      }
+    }
+  }
+}
+@endsalt

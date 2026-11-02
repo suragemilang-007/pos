@@ -7,16 +7,16 @@
 <div class="max-w-3xl mx-auto space-y-6">
 
     {{-- ── Info Banner ─────────────────────────────────────────────────────── --}}
-    <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl px-5 py-3 flex items-start gap-3">
-        <svg class="w-5 h-5 text-amber-500 dark:text-amber-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl px-5 py-3 flex items-start gap-3">
+        <svg class="w-5 h-5 text-blue-500 dark:text-blue-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
         </svg>
-        <div class="text-sm text-amber-800 dark:text-amber-300 space-y-0.5">
-            <p class="font-semibold">Void hanya bisa dilakukan dalam batas waktu sejak transaksi dibuat.</p>
-            <p class="text-amber-700 dark:text-amber-400 text-xs">
-                Void membatalkan <strong>semua item</strong> sekaligus dan mengembalikan stok ke gudang.
-                Untuk pembatalan sebagian, gunakan menu <strong>Retur Penjualan</strong>.
+        <div class="text-sm text-blue-800 dark:text-blue-300 space-y-0.5">
+            <p class="font-semibold">Pengajuan void memerlukan persetujuan pemilik.</p>
+            <p class="text-blue-700 dark:text-blue-400 text-xs">
+                Setelah kasir mengajukan, pemilik akan menerima notifikasi dan melakukan konfirmasi.
+                Void membatalkan <strong>semua item</strong> sekaligus. Untuk pembatalan sebagian, gunakan <strong>Retur Penjualan</strong>.
             </p>
         </div>
     </div>
@@ -161,23 +161,24 @@
             </button>
         </div>
 
-        {{-- Panel "sedang diproses" — muncul setelah submit, sebelum WS callback --}}
+        {{-- Panel "menunggu persetujuan" — muncul setelah submit, sebelum owner konfirmasi --}}
         <div id="panel-processing" class="hidden">
-            <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl px-6 py-5">
-                <div class="flex items-center gap-3">
-                    <svg class="animate-spin w-6 h-6 text-amber-500 shrink-0" fill="none" viewBox="0 0 24 24">
+            <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl px-6 py-5">
+                <div class="flex items-start gap-3">
+                    <svg class="animate-spin w-6 h-6 text-blue-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24">
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
                     </svg>
                     <div>
-                        <p class="text-sm font-semibold text-amber-800 dark:text-amber-300">Void sedang diproses…</p>
-                        <p class="text-xs text-amber-700 dark:text-amber-400 mt-0.5">Stok sedang dikembalikan ke gudang. Tunggu notifikasi.</p>
+                        <p class="text-sm font-semibold text-blue-800 dark:text-blue-300">Menunggu persetujuan pemilik…</p>
+                        <p class="text-xs text-blue-700 dark:text-blue-400 mt-0.5">Pengajuan sudah dikirim. Pemilik akan menerima notifikasi dan melakukan konfirmasi.</p>
+                        <p id="processing-batas" class="text-xs text-blue-600 dark:text-blue-500 mt-1 font-mono"></p>
                     </div>
                 </div>
             </div>
         </div>
 
-        {{-- Panel sukses — muncul setelah WS void.completed --}}
+        {{-- Panel sukses — muncul setelah WS void.completed (owner approve + kafka selesai) --}}
         <div id="panel-sukses" class="hidden">
             <div class="bg-green-50 dark:bg-green-900/20 border border-green-300 dark:border-green-700 rounded-xl px-6 py-5">
                 <div class="flex items-center gap-3">
@@ -188,7 +189,24 @@
                     </div>
                     <div>
                         <p class="text-sm font-semibold text-green-800 dark:text-green-300">Transaksi Berhasil Di-void</p>
-                        <p id="sukses-detail" class="text-xs text-green-700 dark:text-green-400 mt-0.5">Stok produk telah dikembalikan ke gudang.</p>
+                        <p id="sukses-detail" class="text-xs text-green-700 dark:text-green-400 mt-0.5">Pemilik telah menyetujui. Stok produk dikembalikan ke gudang.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{-- Panel ditolak — muncul setelah WS void.rejected --}}
+        <div id="panel-ditolak" class="hidden">
+            <div class="bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-700 rounded-xl px-6 py-5">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/50 flex items-center justify-center shrink-0">
+                        <svg class="w-6 h-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="text-sm font-semibold text-red-800 dark:text-red-300">Pengajuan Void Ditolak</p>
+                        <p class="text-xs text-red-700 dark:text-red-400 mt-0.5">Pemilik tidak menyetujui pembatalan transaksi ini. Transaksi tetap berlaku.</p>
                     </div>
                 </div>
             </div>
@@ -209,7 +227,7 @@
 
         <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
             <div>
-                <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100">Konfirmasi Void Transaksi</h3>
+                <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100">Ajukan Void ke Pemilik</h3>
                 <p id="modal-void-subtitle" class="text-xs text-gray-500 dark:text-gray-400 mt-0.5"></p>
             </div>
             <button onclick="tutupModalVoid()" class="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-lg transition-colors">
@@ -277,7 +295,7 @@
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
                 </svg>
-                <span id="lbl-submit-void">Ya, Void Sekarang</span>
+                <span id="lbl-submit-void">Ajukan ke Pemilik</span>
             </button>
         </div>
     </div>
@@ -518,7 +536,7 @@ async function submitVoid() {
             keterangan: keterangan || null,
         });
 
-        // 202 Accepted — async via Kafka, tunggu WS event void.completed
+        // 202 Accepted — pengajuan diterima, tunggu owner konfirmasi
         tutupModalVoid();
         stopCountdown();
 
@@ -526,7 +544,15 @@ async function submitVoid() {
         document.getElementById('panel-void-eligible').classList.add('hidden');
         document.getElementById('panel-processing').classList.remove('hidden');
 
-        showToast('info', 'Void Diproses', 'Menunggu konfirmasi dari server...');
+        // Tampilkan sisa waktu batas void di panel waiting
+        if (transaksiData?.sisa_waktu_void) {
+            const mnt = Math.floor(transaksiData.sisa_waktu_void / 60);
+            const dtk = transaksiData.sisa_waktu_void % 60;
+            document.getElementById('processing-batas').textContent =
+                `Pemilik harus menyetujui dalam: ${String(mnt).padStart(2,'0')}:${String(dtk).padStart(2,'0')}`;
+        }
+
+        showToast('info', 'Pengajuan Terkirim', 'Menunggu persetujuan pemilik...');
 
     } catch (err) {
         const msg = err.response?.data?.message || 'Gagal mengirim permintaan void.';
@@ -554,7 +580,7 @@ async function submitVoid() {
 function setVoidLoading(on) {
     document.getElementById('btn-submit-void').disabled = on;
     document.getElementById('spinner-void').classList.toggle('hidden', !on);
-    document.getElementById('lbl-submit-void').textContent = on ? 'Memproses...' : 'Ya, Void Sekarang';
+    document.getElementById('lbl-submit-void').textContent = on ? 'Mengirim...' : 'Ajukan ke Pemilik';
 }
 
 // ── WebSocket — handle void.completed ────────────────────────────────────────
@@ -568,20 +594,21 @@ window.handleWsEvent = function(data) {
         handleVoidCompleted(data);
         return;
     }
-    // Delegasikan event lain ke handler global (transaksi, stok, dll.)
+    if (data.event === 'void.rejected') {
+        handleVoidRejected(data);
+        return;
+    }
     if (typeof _origHandleWsEvent === 'function') {
         _origHandleWsEvent(data);
     }
 };
 
 function handleVoidCompleted(data) {
-    // Hanya proses jika ini untuk transaksi yang sedang ditampilkan
     if (!transaksiData || data.transaksiId !== transaksiData.id) return;
 
     document.getElementById('panel-processing').classList.add('hidden');
     document.getElementById('panel-sukses').classList.remove('hidden');
 
-    // Update badge status
     const badge = document.getElementById('badge-status');
     badge.className = 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400';
     badge.textContent = 'VOIDED';
@@ -589,13 +616,23 @@ function handleVoidCompleted(data) {
     document.getElementById('sukses-detail').textContent =
         `No. ${transaksiData.no_transaksi} berhasil dibatalkan. Stok telah dikembalikan ke gudang.`;
 
-    showToast('success', 'Void Berhasil',
-        `Transaksi ${transaksiData.no_transaksi} telah dibatalkan.`);
+    showToast('success', 'Void Berhasil', `Transaksi ${transaksiData.no_transaksi} telah dibatalkan.`);
 
-    // Update state lokal
     transaksiData.status   = 'VOIDED';
     transaksiData.can_void = false;
+    stopCountdown();
+}
 
+function handleVoidRejected(data) {
+    if (!transaksiData || data.transaksiId !== transaksiData.id) return;
+
+    document.getElementById('panel-processing').classList.add('hidden');
+    document.getElementById('panel-ditolak').classList.remove('hidden');
+    document.getElementById('div-btn-void').classList.add('hidden');
+
+    showToast('error', 'Void Ditolak', 'Pemilik tidak menyetujui pembatalan transaksi ini.');
+
+    transaksiData.can_void = false;
     stopCountdown();
 }
 
@@ -665,6 +702,7 @@ function resetTampilan() {
     document.getElementById('panel-void-not-eligible').classList.add('hidden');
     document.getElementById('panel-processing').classList.add('hidden');
     document.getElementById('panel-sukses').classList.add('hidden');
+    document.getElementById('panel-ditolak').classList.add('hidden');
     document.getElementById('div-btn-void').classList.add('hidden');
     document.getElementById('btn-void').disabled = false;
     document.getElementById('tbody-items').innerHTML = '';

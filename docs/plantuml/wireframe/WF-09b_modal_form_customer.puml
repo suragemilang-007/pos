@@ -1,0 +1,30 @@
+@startsalt WF-09b_Modal_Form_Customer
+' Sumber: laravel-app/resources/views/kasir/customer/index.blade.php (#modal-form, #modal-nonaktif)
+title WF-09b: Modal Tambah/Edit Customer & Konfirmasi Nonaktifkan
+{
+  {+
+    { <b>Tambah Customer | . | [×] }
+    ==
+    Nama <color:red>*
+    "Nama lengkap customer                "
+    No. HP <color:red>*
+    "Contoh: 081234567890                 "
+    Tipe Customer <color:red>*
+    { (X) Reguler | () Grosir }
+    Alamat <size:10>(opsional)
+    {+
+      "Alamat lengkap...                  "
+      "                                   "
+    }
+    --
+    { . | [ Batal ] | [ Simpan ] }
+  } | . | {+
+    <b>Nonaktifkan Customer
+    ==
+    <color:orange><&warning></color> Nonaktifkan customer <b>Budi Santoso</b>?
+    <size:10>Riwayat belanjanya tetap tersimpan dan dapat dilihat kapan saja.
+    --
+    { . | [ Batal ] | [ Ya, Nonaktifkan ] }
+  }
+}
+@endsalt

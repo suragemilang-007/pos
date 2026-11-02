@@ -1,0 +1,42 @@
+@startsalt WF-11_Dashboard_Gudang
+' Sumber: laravel-app/resources/views/gudang/dashboard.blade.php
+!include _layout.iuml
+!$active = "Dashboard Gudang"
+title WF-11: Halaman Dashboard Gudang (Admin Gudang)
+{+
+  {
+    $sidebar_gudang() | {
+      $header("Dashboard Gudang")
+      .
+      { [<&plus> Buat PO Baru] | [<&clipboard> Lihat Stok] | [<&credit-card> Bayar Hutang] | [<&wrench> Penyesuaian Stok] }
+      .
+      {
+        {+ Total Produk Aktif
+           <b>127 } | {+ Produk Stok Rendah     <&chevron-right>
+           <b>5
+           <color:red><size:10>↑ Perlu perhatian } | {+ Pembelian Bulan Ini
+           <b>Rp 18.750.000 } | {+ PO Menunggu Proses
+           <b>1
+           <color:orange><size:10>Consumer sedang memproses }
+      }
+      .
+      {+
+        { <&clock> | <size:10><b>HUTANG JATUH TEMPO < 3 HARI | . | <&chevron-right>
+          .        | <b>Rp 4.200.000                         | . | . }
+      }
+      .
+      {+
+        <b>5 Pembelian Terakhir
+        --
+        {#
+          <b>No PO                | <b>Supplier          | <b>Total       | <b>Status
+          PO-20261029-0012        | PT Sinar Makmur      | Rp 1.322.000   | <color:orange>PENDING
+          PO-20261027-0011        | CV Sumber Rejeki     | Rp 3.450.000   | <color:green>COMPLETED
+          PO-20261025-0010        | PT Sinar Makmur      | Rp 875.000     | <color:green>COMPLETED
+          ...                     | ...                  | ...            | ...
+        }
+      }
+    }
+  }
+}
+@endsalt

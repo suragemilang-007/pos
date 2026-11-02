@@ -153,6 +153,11 @@ Route::middleware(['auth.jwt', 'role:owner'])->prefix('owner')->group(function (
     // Daftar transaksi seluruh kasir — hanya owner
     Route::get('/transaksi', [TransaksiController::class, 'index']);
 
+    // Persetujuan void transaksi — owner approve / reject pengajuan kasir
+    Route::get ('/void/pending',       [VoidTransaksiController::class, 'listPending']);
+    Route::post('/void/{id}/approve',  [VoidTransaksiController::class, 'approve']);
+    Route::post('/void/{id}/reject',   [VoidTransaksiController::class, 'reject']);
+
     // SD-14: Laporan
     Route::get('/laporan/{jenis}/export', [LaporanController::class, 'export']);
     Route::get('/laporan/{jenis}',        [LaporanController::class, 'generate']);

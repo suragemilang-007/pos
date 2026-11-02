@@ -68,7 +68,7 @@ async function createProducer(kafka) {
  * @param {import('kafkajs').Kafka}         kafka
  * @returns {Promise<{ server: http.Server, producer: import('kafkajs').Producer }>}
  */
-async function start(_pool, kafka) {
+async function start(_pool, kafka, wsService) {
     const producer = await createProducer(kafka);
 
     const app = express();
@@ -149,6 +149,32 @@ async function start(_pool, kafka) {
                 error:   err.message,
             });
         }
+    });
+
+    // ── POST /push-ws ──────────────────────────────────────────────────────────
+    // Push notifikasi langsung ke WebSocket tanpa melalui Kafka.
+    // Dipakai untuk operasi sinkron yang tidak mengubah stok (contoh: tolak void).
+    // channel: 'user-{userId}' untuk notifikasi personal, 'stok-global' untuk semua.
+    app.post('/push-ws', (req, res) => {
+        const { channel, payload } = req.body || {};
+
+        if (!channel || !payload) {
+            return res.status(400).json({
+                success: false,
+                message: 'Field "channel" dan "payload" wajib ada',
+            });
+        }
+
+        if (!wsService) {
+            return res.status(503).json({
+                success: false,
+                message: 'WebSocket service belum siap',
+            });
+        }
+
+        wsService.push(channel, payload);
+        console.log(`[WS PUSH] channel=${channel} event=${payload.event || '?'}`);
+        return res.status(200).json({ success: true });
     });
 
     // ── 404 handler ───────────────────────────────────────────────────────────

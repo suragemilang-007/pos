@@ -1,0 +1,31 @@
+@startsalt WF-16_Daftar_Pembelian
+' Sumber: laravel-app/resources/views/gudang/pembelian/index.blade.php
+' Status PO mengikuti lifecycle PENDING → COMPLETED | CANCELLED (diproses Consumer Kafka).
+!include _layout.iuml
+!$active = "Pembelian"
+title WF-16: Halaman Daftar Pembelian (PO)
+{+
+  {
+    $sidebar_gudang() | {
+      $header("Pembelian (PO)")
+      .
+      {+
+        { .                | .              | <size:10>Dari   | <size:10>Sampai | .
+          ^Semua Supplier^ | ^Semua Status^ | "dd/mm/yyyy  "  | "dd/mm/yyyy  "  | [<&plus> Buat PO Baru] }
+      }
+      .
+      {+
+        {#
+          <b>No PO           | <b>Supplier        | <b>Tanggal  | <b>Total        | <b>Status                | <b>Aksi
+          PO-20261029-0012   | PT Sinar Makmur    | 29/10/2026  | Rp 1.322.000    | <color:orange>PENDING    | [Detail]
+          PO-20261027-0011   | CV Sumber Rejeki   | 27/10/2026  | Rp 3.450.000    | <color:green>COMPLETED   | [Detail]
+          PO-20261020-0009   | PT Sinar Makmur    | 20/10/2026  | Rp 640.000      | <color:red>CANCELLED     | [Detail]
+          ...                | ...                | ...         | ...             | ...                      | .
+        }
+        --
+        { <size:10>Menampilkan 1–10 dari 37 PO | . | . | { [<] | [1] | [2] | [3] | [4] | [>] } }
+      }
+    }
+  }
+}
+@endsalt

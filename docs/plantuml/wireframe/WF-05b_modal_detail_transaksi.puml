@@ -1,0 +1,24 @@
+@startsalt WF-05b_Modal_Detail_Transaksi
+' Sumber: laravel-app/resources/views/kasir/dashboard.blade.php (#modal-detail)
+title WF-05b: Modal Detail Transaksi (Dashboard Kasir)
+{+
+  { <b>Detail Transaksi | . | [×]
+    <size:10>TRX-20261029-00042 | . | . }
+  ==
+  { <size:10>Waktu: <b>29/10/2026 14:32 | <size:10>Metode: <b>Tunai | <size:10>Status: <color:green><b>COMPLETED }
+  --
+  {#
+    <b>Produk                       | <b>Qty         | <b>Harga     | <b>Subtotal
+    Kopi Kapal Api 165g             | 1 Karton      | Rp 280.000   | Rp 280.000
+    Gula Pasir 1kg                  | 2 Pcs         | Rp 15.000    | Rp 30.000
+  }
+  --
+  { Subtotal       | . | Rp 310.000
+    <color:red>Diskon | . | <color:red>Rp 0
+    <b>Total       | . | <b>Rp 310.000
+    <size:10>Bayar     | . | <size:10>Rp 350.000
+    <size:10>Kembalian | . | <size:10>Rp 40.000 }
+  --
+  { [ <&print> Print Struk ] | [     Tutup     ] }
+}
+@endsalt

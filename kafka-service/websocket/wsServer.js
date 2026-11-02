@@ -23,17 +23,15 @@ const wsService = require('../services/wsService');
 
 const WS_PORT = parseInt(process.env.WS_PORT || '3001');
 
-// Whitelist channel yang valid — tolak subscribe ke channel sembarang
-// untuk mencegah satu client membanjiri channel orang lain
-const VALID_CHANNEL_PREFIXES = ['user-', 'stok-global'];
-
 /**
  * Cek apakah nama channel diizinkan.
- * 'stok-global' diterima apa adanya.
- * 'user-{n}' diterima jika suffix adalah angka positif.
+ * - 'stok-global'   : broadcast stok ke semua kasir
+ * - 'user-{n}'      : notifikasi personal per user
+ * - 'void-requests' : pengajuan void dari kasir ke owner
  */
 function isValidChannel(channel) {
     if (channel === 'stok-global') return true;
+    if (channel === 'void-requests') return true;
     if (/^user-\d+$/.test(channel)) return true;
     return false;
 }

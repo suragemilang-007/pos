@@ -1,0 +1,31 @@
+@startsalt WF-19_Penyesuaian_Stok
+' Sumber: laravel-app/resources/views/gudang/penyesuaian-stok/index.blade.php
+' Status penyesuaian: PENDING → COMPLETED (diproses Consumer Kafka).
+!include _layout.iuml
+!$active = "Penyesuaian Stok"
+title WF-19: Halaman Penyesuaian Stok
+{+
+  {
+    $sidebar_gudang() | {
+      $header("Penyesuaian Stok")
+      .
+      {+
+        { .                 | <size:10>Dari  | <size:10>Sampai | . | .
+          ^Semua Tipe     ^ | "dd/mm/yyyy  " | "dd/mm/yyyy  "  | . | [<&plus> Penyesuaian Baru] }
+      }
+      .
+      {+
+        {#
+          <b>Tanggal          | <b>Produk            | <b>Tipe                   | <b>Qty         | <b>Keterangan                         | <b>Admin    | <b>Status
+          29/10/2026 10:15    | Minyak Goreng 2L     | <color:red>Rusak          | <color:red>−5  | Kemasan bocor akibat atap gudang       | Nama Admin  | <color:green>COMPLETED
+          28/10/2026 16:40    | Roti Tawar           | <color:orange>Expired     | <color:red>−12 | Melewati tanggal kadaluarsa            | Nama Admin  | <color:green>COMPLETED
+          27/10/2026 08:05    | Gula Pasir 1kg       | <color:green>+ Koreksi    | <color:green>+3| Selisih positif hasil opname           | Nama Admin  | <color:green>COMPLETED
+          ...                 | ...                  | ...                       | ...            | ...                                    | ...         | ...
+        }
+        --
+        { <size:10>Menampilkan 1–10 dari 21 data | . | . | { [<] | [1] | [2] | [3] | [>] } }
+      }
+    }
+  }
+}
+@endsalt

@@ -166,6 +166,15 @@ async function processVoid(event, pool, wsService) {
             message:     'Transaksi berhasil dibatalkan. Stok telah dikembalikan.',
         });
 
+        // ── Langkah 7b: Push ke void-requests agar owner di halaman persetujuan
+        // dapat menghapus item dari list — owner subscribe channel ini, bukan user-{kasirId}
+        wsService.push('void-requests', {
+            event:       'void.completed',
+            voidId:      voidId,
+            transaksiId: transaksiId,
+            status:      'COMPLETED',
+        });
+
         // ── Langkah 8: Broadcast update stok ke semua terminal ────────────────
         // Semua kasir yang aktif akan melihat stok terbaru secara real-time
         // tanpa perlu refresh halaman — ini adalah nilai dari arsitektur event-driven

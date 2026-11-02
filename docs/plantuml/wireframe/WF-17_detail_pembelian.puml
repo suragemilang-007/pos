@@ -1,0 +1,39 @@
+@startsalt WF-17_Detail_Pembelian
+' Sumber: laravel-app/resources/views/gudang/pembelian/show.blade.php
+' Tombol "Buat Retur" hanya muncul jika status PO = COMPLETED.
+!include _layout.iuml
+!$active = "Pembelian"
+title WF-17: Halaman Detail Purchase Order
+{+
+  {
+    $sidebar_gudang() | {
+      $header("Detail PO")
+      <size:10>Pembelian / <b>PO-20261027-0011
+      .
+      {+
+        { <size:10>PO-20261027-0011 | . | . | <color:green>[COMPLETED] | [<&action-undo> Buat Retur]
+          <b>CV Sumber Rejeki       | . | . | .                          | . }
+        --
+        { <size:10>Tanggal PO | <size:10>Dibuat Oleh | <size:10>Jumlah Item | <size:10>Total PO
+          <b>27/10/2026       | Nama Admin           | <b>3                 | <b>Rp 3.450.000 }
+      }
+      .
+      {+
+        <b>Item Pembelian
+        --
+        {#
+          <b>Produk              | <b>Satuan | <b>Qty | <b>Harga Beli | <b>Subtotal
+          Kopi Kapal Api 165g    | Karton    | 10     | Rp 250.000    | Rp 2.500.000
+          Gula Pasir 1kg         | Pcs       | 50     | Rp 14.000     | Rp 700.000
+          Minyak Goreng 2L       | Pcs       | 10     | Rp 25.000     | Rp 250.000
+        }
+        --
+        { . | . | . | Total
+          . | . | . | <b>Rp 3.450.000 }
+      }
+      .
+      [← Kembali ke Daftar PO]
+    }
+  }
+}
+@endsalt

@@ -1,0 +1,27 @@
+@startsalt WF-14_Kategori_Produk
+' Sumber: laravel-app/resources/views/gudang/kategori/index.blade.php
+!include _layout.iuml
+!$active = "Kategori Produk"
+title WF-14: Halaman Manajemen Kategori Produk
+{+
+  {
+    $sidebar_gudang() | {
+      $header("Manajemen Kategori")
+      .
+      { <size:10>Kategori digunakan untuk mengelompokkan produk di inventori. | . | [<&plus> Tambah Kategori] }
+      .
+      {+
+        { <b>Daftar Kategori Produk | . | . | [8 kategori] }
+        --
+        {#
+          <b>No | <b>Nama Kategori | <b>Deskripsi                       | <b>Jumlah Produk | <b>Aksi
+          1     | Minuman           | Kopi, teh, sirup, minuman kemasan   | 24               | { [Edit] | [Hapus] }
+          2     | Rokok             | Rokok kretek dan filter             | 18               | { [Edit] | [Hapus] }
+          3     | Sembako           | Beras, gula, minyak, tepung         | 31               | { [Edit] | [Hapus] }
+          ...   | ...               | ...                                 | ...              | .
+        }
+      }
+    }
+  }
+}
+@endsalt

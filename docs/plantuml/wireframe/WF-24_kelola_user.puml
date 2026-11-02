@@ -1,0 +1,29 @@
+@startsalt WF-24_Kelola_User
+' Sumber: laravel-app/resources/views/owner/user/index.blade.php
+!include _layout.iuml
+!$active = "Kelola User"
+title WF-24: Halaman Kelola User (Owner)
+{+
+  {
+    $sidebar_owner() | {
+      $header("Kelola User")
+      .
+      {+
+        { ^Semua Role  ^ | ^Semua Status^ | . | . | [<&plus> Tambah User] }
+      }
+      .
+      {+
+        {#
+          <b>Nama             | <b>Username     | <b>Role         | <b>Status | <b>Login Terakhir    | <b>Aksi
+          (S) Siti Rahma      | siti.kasir      | Kasir           | Aktif     | 29/10/2026 07:58     | { [Edit] | [Reset Password] | [Nonaktifkan] }
+          (A) Andi Pratama    | andi.gudang     | Admin Gudang    | Aktif     | 29/10/2026 08:10     | { [Edit] | [Reset Password] | [Nonaktifkan] }
+          (D) Dewi Lestari    | dewi.kasir      | Kasir           | Nonaktif  | 12/09/2026 16:21     | { [Edit] | [Reset Password] | [Aktifkan] }
+          ...                 | ...             | ...             | ...       | ...                  | .
+        }
+        --
+        { <size:10>Menampilkan 1–10 dari 6 user | . | . | { [<] | [1] | [>] } }
+      }
+    }
+  }
+}
+@endsalt

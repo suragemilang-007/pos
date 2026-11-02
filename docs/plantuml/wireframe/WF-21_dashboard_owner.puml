@@ -1,0 +1,54 @@
+@startsalt WF-21_Dashboard_Owner
+' Sumber: laravel-app/resources/views/owner/dashboard.blade.php
+!include _layout.iuml
+!$active = "Dashboard"
+title WF-21: Halaman Dashboard Owner
+{+
+  {
+    $sidebar_owner() | {
+      $header("Dashboard")
+      .
+      { . | . | . | . | [<&bar-chart> Lihat Laporan Lengkap] }
+      .
+      {
+        {+ Omzet Hari Ini
+           <b>Rp 3.450.000
+           <size:10>42 transaksi } | {+ Omzet Bulan Ini
+           <b>Rp 86.200.000
+           <size:10>1.024 transaksi } | {+ vs. Bulan Lalu
+           <color:green><b>+12,4% ▲
+           <size:10>perbandingan omzet } | {+ Total Transaksi Hari Ini
+           <b>42 }
+      }
+      .
+      {
+        {+ <b>Omzet 7 Hari Terakhir
+           .
+           [          [ Grafik Garis Omzet 7 Hari ]          ]
+           .
+        } | {+ <b>Top 5 Terlaris
+           <size:10>bulan ini
+           --
+           { 1. Kopi Kapal Api 165g | 320
+             2. Gula Pasir 1kg      | 210
+             3. Minyak Goreng 2L    | 95
+             4. Rokok Sampoerna 16  | 88
+             5. Beras 5kg           | 61 }
+        }
+      }
+      .
+      {+
+        <b>5 Transaksi Terbesar Hari Ini
+        --
+        {#
+          <b>No Transaksi        | <b>Waktu | <b>Customer     | <b>Total
+          TRX-20261029-00031     | 11:20    | Budi Santoso    | Rp 1.250.000
+          TRX-20261029-00042     | 14:32    | Budi Santoso    | Rp 310.000
+          TRX-20261029-00018     | 09:47    | Umum            | Rp 245.000
+          ...                    | ...      | ...             | ...
+        }
+      }
+    }
+  }
+}
+@endsalt

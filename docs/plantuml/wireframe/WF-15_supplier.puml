@@ -1,0 +1,28 @@
+@startsalt WF-15_Supplier
+' Sumber: laravel-app/resources/views/gudang/supplier/index.blade.php
+!include _layout.iuml
+!$active = "Supplier"
+title WF-15: Halaman Data Supplier
+{+
+  {
+    $sidebar_gudang() | {
+      $header("Data Supplier")
+      .
+      {+
+        { "<&magnifying-glass> Cari nama supplier...                " | ^Semua Status^ | [<&plus> Tambah Supplier] }
+      }
+      .
+      {+
+        {#
+          <b>Nama Supplier   | <b>Kontak Person | <b>No. Telp      | <b>Alamat                 | <b>Status | <b>Aksi
+          PT Sinar Makmur    | Hendra          | 0812-3456-7890   | Jl. Raya Industri No. 12  | Aktif     | { [Edit] | [Hapus] }
+          CV Sumber Rejeki   | Wati            | 0813-9876-5432   | Jl. Pasar Baru No. 5      | Aktif     | { [Edit] | [Hapus] }
+          ...                | ...             | ...              | ...                       | ...       | .
+        }
+        --
+        { <size:10>Menampilkan 1–10 dari 14 supplier | . | . | { [<] | [1] | [2] | [>] } }
+      }
+    }
+  }
+}
+@endsalt

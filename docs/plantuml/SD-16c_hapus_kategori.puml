@@ -1,0 +1,64 @@
+@startuml SD-16c_Hapus_Kategori
+title SD-16c: Hapus Kategori Produk
+autonumber
+skinparam sequenceMessageAlign center
+skinparam responseMessageBelowArrow true
+
+actor "Admin Gudang / Owner" as U
+boundary "View Kategori\n(Blade + Axios)" as V
+control "Middleware\n(auth.jwt, role)" as M
+control "KategoriProdukController" as C
+control "KategoriProdukService" as S
+entity "KategoriProduk" as K
+database "MySQL\n(kategori_produk, produk)" as DB
+
+U -> V : Klik "Hapus" pada baris kategori
+V -> V : bukaModalHapus(id)\ncek jumlah_produk dari cache
+
+alt jumlah_produk > 0 (cek sisi client)
+    V --> U : Modal info "masih digunakan oleh N produk"\n(tombol hapus disembunyikan)
+else jumlah_produk = 0
+    V --> U : Modal konfirmasi\n"akan dihapus permanen. Lanjutkan?"
+    U -> V : Klik "Ya, Hapus"
+    V -> M : DELETE /api/gudang/kategori/{id}
+    M -> M : Validasi token JWT & role
+    alt Token tidak valid / role tidak diizinkan
+        M --> V : 401 / 403
+        V --> U : Toast "Gagal menghapus"
+    else Lolos
+        M -> C : destroy(id)
+        C -> S : delete(id)
+        S -> K : withCount('produk')->findOrFail(id)
+        K -> DB : SELECT kategori + COUNT(*) FROM produk\nWHERE kategori_id = ?
+        DB --> K : row + produk_count
+        alt Kategori tidak ditemukan
+            K --> V : 404
+            V --> U : Toast "Gagal menghapus"
+        else produk_count > 0 (cek ulang sisi server)
+            S --> C : throw RuntimeException
+            C --> V : 422 {message: "Kategori tidak dapat dihapus\nkarena masih digunakan oleh N produk"}
+            V -> V : tutupModalHapus()
+            V --> U : Toast "Gagal menghapus"
+            note over V : Terjadi jika ada produk baru masuk\nke kategori setelah modal dibuka
+        else produk_count = 0
+            S -> K : delete()
+            K -> DB : DELETE FROM kategori_produk WHERE id = ?
+            DB --> K : OK
+            K --> S : true
+            S --> C : true
+            C --> V : 200 {message: "Kategori berhasil dihapus"}
+            V -> V : tutupModalHapus()
+            V --> U : Toast sukses
+        end
+        V -> M : GET /api/gudang/kategori (loadKategori)
+        M -> C : indexWithCount()
+        C -> S : getAll()
+        S -> DB : SELECT ... withCount(produk as jumlah_produk)
+        DB --> S : daftar kategori
+        S --> C : Collection
+        C --> V : 200 {data}
+        V --> U : Tabel kategori diperbarui
+    end
+end
+
+@enduml

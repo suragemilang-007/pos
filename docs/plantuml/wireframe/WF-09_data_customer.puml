@@ -1,0 +1,28 @@
+@startsalt WF-09_Data_Customer
+' Sumber: laravel-app/resources/views/kasir/customer/index.blade.php
+!include _layout.iuml
+!$active = "Data Customer"
+title WF-09: Halaman Data Customer
+{+
+  {
+    $sidebar_owner() | {
+      $header("Data Customer")
+      .
+      {+
+        { "<&magnifying-glass> Cari nama atau no. HP...              " | ^Aktif   ^ | [<&plus> Tambah Customer] }
+      }
+      .
+      {+
+        {#
+          <b>Nama        | <b>No. HP      | <b>Tipe  | <b>Total Belanja | <b>Frekuensi | <b>Status | <b>Aksi
+          Budi Santoso   | 081234567890   | Grosir   | Rp 12.450.000    | 34           | Aktif     | { [Edit] | [Riwayat] | [Nonaktifkan] }
+          Ani Lestari    | 081398765432   | Reguler  | Rp 850.000       | 7            | Aktif     | { [Edit] | [Riwayat] | [Nonaktifkan] }
+          ...            | ...            | ...      | ...              | ...          | ...       | .
+        }
+        --
+        { <size:10>Menampilkan 1–10 dari 48 customer | . | . | { [<] | [1] | [2] | [3] | [>] } }
+      }
+    }
+  }
+}
+@endsalt

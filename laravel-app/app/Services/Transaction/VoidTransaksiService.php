@@ -181,7 +181,7 @@ class VoidTransaksiService
         $void = DB::transaction(function () use ($transaksiId, $userId, $alasan, $keterangan, $batasWaktu) {
             return VoidTransaksi::create([
                 'transaksi_id'     => $transaksiId,
-                'transaksi_baru_id'=> null,              // diisi setelah kasir buat transaksi koreksi
+                'transaksi_baru_id'=> null,
                 'user_id'          => $userId,
                 'alasan'           => $alasan,
                 'keterangan'       => $keterangan,
@@ -190,9 +190,73 @@ class VoidTransaksiService
             ]);
         });
 
-        // Load relasi yang dibutuhkan publishTransactionVoid:
-        // transaksi.details berisi semua item — method publish yang filter is_bonus=false
-        $void->load('transaksi.details');
+        // Tidak publish ke Kafka di sini — menunggu persetujuan owner.
+        // Kafka akan dipublish di approve() setelah owner konfirmasi.
+        Log::info('[VOID TRANSAKSI] Pengajuan diterima, menunggu persetujuan owner', [
+            'void_id'      => $void->id,
+            'transaksi_id' => $transaksiId,
+            'user_id'      => $userId,
+            'alasan'       => $alasan,
+            'batas_waktu'  => $batasWaktu->toIso8601String(),
+        ]);
+
+        // Notifikasi real-time ke semua owner yang membuka halaman void-approval.
+        // Best-effort: tidak throw jika WS gagal — kasir tetap mendapat response 202.
+        $this->kafkaProducer->pushWebSocket('void-requests', [
+            'event'          => 'void.submitted',
+            'voidId'         => $void->id,
+            'transaksiId'    => $transaksiId,
+            'noTransaksi'    => $transaksi->no_transaksi,
+            'totalTransaksi' => (float) $transaksi->total,
+            'kasirId'        => $userId,
+            'alasan'         => $alasan,
+            'batasWaktu'     => $batasWaktu->toIso8601String(),
+            'sisaDetik'      => max(0, now()->diffInSeconds($batasWaktu, false)),
+        ]);
+
+        return $void;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // 4. APPROVE VOID (owner)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Owner menyetujui pengajuan void dari kasir.
+     *
+     * Validasi:
+     * - void_transaksi harus PENDING
+     * - batas_waktu belum lewat
+     *
+     * Jika lolos → publish ke Kafka → Consumer yang UPDATE stok + status VOIDED.
+     *
+     * @throws \RuntimeException kode 400 jika tidak eligible
+     * @throws \RuntimeException kode 503 jika Kafka gagal
+     */
+    public function approve(int $voidId): VoidTransaksi
+    {
+        $void = VoidTransaksi::with('transaksi.details')->find($voidId);
+
+        if (! $void) {
+            throw new \RuntimeException('Pengajuan void tidak ditemukan', 404);
+        }
+
+        if ($void->status !== 'PENDING') {
+            throw new \RuntimeException(
+                "Pengajuan void sudah berstatus {$void->status}, tidak dapat disetujui",
+                400
+            );
+        }
+
+        // Cek batas waktu — owner harus approve sebelum window berakhir
+        if (now()->isAfter($void->batas_waktu)) {
+            // Otomatis tolak jika sudah kadaluarsa
+            $void->update(['status' => 'REJECTED']);
+            throw new \RuntimeException(
+                'Batas waktu void telah habis. Pengajuan otomatis ditolak.',
+                400
+            );
+        }
 
         // Publish ke Kafka — Consumer (voidConsumer.js) yang:
         //   1. TAMBAH stok untuk item non-bonus (qty × isiSatuan)
@@ -201,14 +265,74 @@ class VoidTransaksiService
         //   4. Push WebSocket 'void.completed' + 'stock.updated'
         $this->kafkaProducer->publishTransactionVoid($void);
 
-        Log::info('[VOID TRANSAKSI] Created', [
+        Log::info('[VOID TRANSAKSI] Disetujui owner, event dikirim ke Kafka', [
             'void_id'      => $void->id,
-            'transaksi_id' => $transaksiId,
-            'user_id'      => $userId,
-            'alasan'       => $alasan,
-            'batas_waktu'  => $batasWaktu->toIso8601String(),
+            'transaksi_id' => $void->transaksi_id,
         ]);
 
         return $void;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // 5. REJECT VOID (owner)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Owner menolak pengajuan void dari kasir.
+     *
+     * Sinkron (tidak via Kafka) — hanya UPDATE status + push WS langsung.
+     * Tidak ada perubahan stok karena void tidak dieksekusi.
+     *
+     * @throws \RuntimeException kode 400 jika sudah tidak PENDING
+     */
+    public function reject(int $voidId): VoidTransaksi
+    {
+        $void = VoidTransaksi::find($voidId);
+
+        if (! $void) {
+            throw new \RuntimeException('Pengajuan void tidak ditemukan', 404);
+        }
+
+        if ($void->status !== 'PENDING') {
+            throw new \RuntimeException(
+                "Pengajuan void sudah berstatus {$void->status}",
+                400
+            );
+        }
+
+        $void->update(['status' => 'REJECTED']);
+
+        // Push WS langsung ke kasir yang mengajukan (bukan via Kafka)
+        $this->kafkaProducer->pushWebSocket("user-{$void->user_id}", [
+            'event'        => 'void.rejected',
+            'voidId'       => $void->id,
+            'transaksiId'  => $void->transaksi_id,
+            'status'       => 'REJECTED',
+            'message'      => 'Pengajuan void ditolak oleh pemilik',
+        ]);
+
+        Log::info('[VOID TRANSAKSI] Ditolak owner', [
+            'void_id'      => $void->id,
+            'transaksi_id' => $void->transaksi_id,
+            'kasir_id'     => $void->user_id,
+        ]);
+
+        return $void;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // 6. LIST PENDING
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Ambil semua pengajuan void yang menunggu persetujuan owner.
+     * Urutkan dari yang paling mendekati batas_waktu agar owner prioritaskan yang urgent.
+     */
+    public function listPending(): \Illuminate\Database\Eloquent\Collection
+    {
+        return VoidTransaksi::with(['transaksi', 'user:id,nama'])
+            ->where('status', 'PENDING')
+            ->orderBy('batas_waktu', 'asc')
+            ->get();
     }
 }

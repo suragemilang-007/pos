@@ -275,6 +275,35 @@ class KafkaProducerService
     }
 
     // ─────────────────────────────────────────────────────────────────────────
+    // WEBSOCKET DIRECT PUSH (non-Kafka)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Push notifikasi langsung ke WebSocket tanpa melalui Kafka.
+     *
+     * Dipakai untuk operasi sinkron yang tidak mengubah stok — contoh: tolak void.
+     * Tidak throw exception jika gagal (best-effort) karena DB sudah terupdate;
+     * notifikasi WS hanya convenience, bukan syarat keberhasilan operasi.
+     */
+    public function pushWebSocket(string $channel, array $payload): void
+    {
+        try {
+            Http::timeout(3)
+                ->acceptJson()
+                ->post($this->producerUrl . '/push-ws', [
+                    'channel' => $channel,
+                    'payload' => $payload,
+                ]);
+        } catch (\Throwable $e) {
+            Log::warning('[WS PUSH] Gagal push notifikasi WS', [
+                'channel' => $channel,
+                'event'   => $payload['event'] ?? '?',
+                'error'   => $e->getMessage(),
+            ]);
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
     // INTERNAL
     // ─────────────────────────────────────────────────────────────────────────
 

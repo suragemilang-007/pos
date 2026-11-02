@@ -1,0 +1,39 @@
+@startsalt WF-22_Daftar_Transaksi
+' Sumber: laravel-app/resources/views/owner/transaksi/index.blade.php
+' Tombol "Detail" membuka modal detail transaksi (lihat WF-22b).
+!include _layout.iuml
+!$active = "Daftar Transaksi"
+title WF-22: Halaman Daftar Transaksi (Owner)
+{+
+  {
+    $sidebar_owner() | {
+      $header("Daftar Transaksi")
+      .
+      {+
+        { <size:10>Dari Tanggal | <size:10>Sampai Tanggal | <size:10>Status | <size:10>Cari                               | .           | .
+          "dd/mm/yyyy    "      | "dd/mm/yyyy    "        | ^Semua Status^  | "No. transaksi atau nama customer...  " | [<&magnifying-glass> Cari] | [Reset] }
+      }
+      .
+      {
+        {+ <size:10>Total Transaksi
+           <b>1.024 } | {+ <size:10>Total Omzet
+           <b>Rp 86.200.000 } | {+ <size:10>Transaksi Di-void
+           <b>3 }
+      }
+      .
+      {+
+        {#
+          <b>No. Transaksi      | <b>Tanggal         | <b>Customer    | <b>Kasir | <b>Metode Bayar | <b>Total       | <b>Status                | <b>Aksi
+          TRX-20261029-00042    | 29/10/2026 14:32   | Budi Santoso   | Siti     | Tunai           | Rp 310.000     | <color:green>COMPLETED   | [Detail]
+          TRX-20261029-00041    | 29/10/2026 14:20   | Umum           | Siti     | QRIS            | Rp 85.000      | <color:green>COMPLETED   | [Detail]
+          TRX-20261029-00040    | 29/10/2026 14:05   | Ani Lestari    | Dewi     | Transfer        | Rp 1.250.000   | <color:gray>VOIDED       | [Detail]
+          TRX-20261029-00039    | 29/10/2026 13:58   | Umum           | Dewi     | Tunai           | Rp 42.000      | <color:red>FAILED        | [Detail]
+          ...                   | ...                | ...            | ...      | ...             | ...            | ...                      | .
+        }
+        --
+        { <size:10>Menampilkan 1–10 dari 1.024 transaksi | . | . | { [<] | [1] | [2] | [3] | [...] | [>] } }
+      }
+    }
+  }
+}
+@endsalt

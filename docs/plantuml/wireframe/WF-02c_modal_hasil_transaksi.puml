@@ -1,0 +1,23 @@
+@startsalt WF-02c_Modal_Hasil_Transaksi
+' Sumber: laravel-app/resources/views/kasir/transaksi.blade.php (#modal-struk, #modal-error)
+' Modal sukses muncul setelah event WebSocket transaction.completed dari Consumer,
+' modal gagal muncul setelah transaction.failed (mis. stok tidak mencukupi).
+title WF-02c: Modal Transaksi Berhasil / Gagal
+{
+  {+
+    <color:green><&check></color> <b>Transaksi Berhasil!            | [×]
+    ==
+    No. Transaksi: #TRX-20261029-00042 | .
+    <color:green>Struk siap dicetak.   | .
+    --
+    { [ <&print> Cetak Struk ] | [ Transaksi Baru ] } | .
+  } | . | {+
+    <color:red><&x></color> <b>Transaksi Gagal
+    ==
+    Stok tidak mencukupi untuk produk
+    Kopi Kapal Api 165g
+    --
+    [       Tutup & Coba Lagi       ]
+  }
+}
+@endsalt

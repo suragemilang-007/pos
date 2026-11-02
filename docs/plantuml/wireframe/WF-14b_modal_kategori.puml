@@ -1,0 +1,36 @@
+@startsalt WF-14b_Modal_Kategori
+' Sumber: laravel-app/resources/views/gudang/kategori/index.blade.php (#modal-form, #modal-hapus)
+' Kategori yang masih dipakai produk (jumlah_produk > 0) tidak dapat dihapus.
+title WF-14b: Modal Tambah/Edit Kategori & Konfirmasi Hapus
+{
+  {+
+    { <b>Tambah Kategori | . | [×] }
+    ==
+    Nama Kategori <color:red>*
+    "Contoh: Minuman, Sembako, Snack...   "
+    Deskripsi <size:10>(opsional)
+    {+
+      "Keterangan singkat tentang kategori "
+      "                                    "
+    }
+    --
+    { . | [ Batal ] | [ Simpan ] }
+  } | . | {+
+    <b>Hapus Kategori
+    ==
+    <color:orange><&warning></color> <b>Tidak dapat dihapus
+    Kategori "Minuman" masih dipakai 24 produk.
+    <size:10>Nonaktifkan atau pindahkan produk terkait terlebih dahulu.
+    --
+    { . | . | [ Tutup ] }
+  } | . | {+
+    <b>Hapus Kategori
+    ==
+    <color:red><&trash></color> <b>Konfirmasi Hapus
+    Hapus kategori "Alat Tulis"?
+    <color:red><size:10>Tindakan ini tidak dapat dibatalkan.
+    --
+    { . | [ Tutup ] | [ Ya, Hapus ] }
+  }
+}
+@endsalt

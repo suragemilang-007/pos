@@ -1,0 +1,38 @@
+@startsalt WF-10_Riwayat_Customer
+' Sumber: laravel-app/resources/views/kasir/customer/riwayat.blade.php
+' Klik baris tabel membuka modal detail transaksi (pola sama dengan WF-05b).
+!include _layout.iuml
+!$active = "Data Customer"
+title WF-10: Halaman Riwayat Belanja Customer
+{+
+  {
+    $sidebar_owner() | {
+      $header("Riwayat Belanja Customer")
+      <size:10>Data Customer / <b>Budi Santoso
+      .
+      {+
+        { (B) | { <b>Budi Santoso
+                  081234567890
+                  <size:10>Grosir · <color:green>Aktif</color> }| . | {+ <size:10>Total Belanja
+                                                          <b>Rp 12.450.000 } | {+ <size:10>Frekuensi
+                                                                                  <b>34
+                                                                                  <size:10>transaksi } }
+      }
+      .
+      {+
+        <b>Riwayat Transaksi
+        <size:10>Klik baris untuk melihat detail transaksi
+        --
+        {#
+          <b>No Transaksi        | <b>Tanggal         | <b>Items | <b>Total      | <b>Metode | <b>Status
+          TRX-20261029-00042     | 29/10/2026 14:32   | 2        | Rp 310.000   | Tunai     | COMPLETED
+          TRX-20261021-00017     | 21/10/2026 09:15   | 5        | Rp 1.120.000 | Transfer  | COMPLETED
+          ...                    | ...                | ...      | ...          | ...       | ...
+        }
+        --
+        { <size:10>Menampilkan 1–10 dari 34 transaksi | . | . | { [<] | [1] | [2] | [>] } }
+      }
+    }
+  }
+}
+@endsalt

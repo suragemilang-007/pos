@@ -1,0 +1,43 @@
+@startsalt WF-02b_Modal_Pembayaran_NonTunai
+' Sumber: laravel-app/resources/views/kasir/transaksi.blade.php (#modal-pembayaran)
+' Muncul saat kasir klik "Proses Transaksi" dengan metode QRIS / Transfer.
+' Transaksi baru dikirim ke backend setelah kasir klik "Pembayaran Diterima".
+title WF-02b: Modal Pembayaran QRIS / Transfer
+{
+  {+
+    <&credit-card> <b>Pembayaran QRIS
+    ==
+    .
+    {+
+      .
+      .            [  ( Gambar QR Code QRIS Toko )  ]            .
+      .
+    }
+    .
+    {+
+      <size:10>Total Pembayaran
+      <b>Rp 310.000
+    }
+    <size:10>Tunjukkan kode QR ini ke customer untuk dipindai
+    --
+    { [     Batal     ] | [ <&check> Pembayaran Diterima ] }
+  } | . | {+
+    <&credit-card> <b>Pembayaran Transfer Bank
+    ==
+    .
+    {#
+      Bank          | <b>BCA
+      No. Rekening  | <b>1234567890
+      Atas Nama     | <b>Toko Melati
+    }
+    .
+    {+
+      <size:10>Nominal Transfer
+      <b>Rp 310.000
+    }
+    <size:10>Minta customer transfer tepat sesuai nominal di atas
+    --
+    { [     Batal     ] | [ <&check> Pembayaran Diterima ] }
+  }
+}
+@endsalt

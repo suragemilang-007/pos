@@ -1,0 +1,32 @@
+@startsalt WF-22b_Modal_Detail_Transaksi_Owner
+' Sumber: laravel-app/resources/views/owner/transaksi/index.blade.php (#modal-detail)
+' Tombol "Cetak Struk" hanya tampil untuk transaksi COMPLETED.
+title WF-22b: Modal Detail Transaksi (Owner)
+{+
+  { <b>TRX-20261029-00042 | <color:green>COMPLETED | . | [×] }
+  ==
+  {
+    {+ <size:10>Tanggal
+       <b>29/10/2026 14:32 } | {+ <size:10>Customer
+       <b>Budi Santoso } | {+ <size:10>Kasir
+       <b>Siti } | {+ <size:10>Metode Bayar
+       <b>Tunai }
+  }
+  .
+  {#
+    <b>Produk              | <b>Qty | <b>Satuan | <b>Harga     | <b>Subtotal
+    Kopi Kapal Api 165g    | 1      | Karton    | Rp 280.000   | Rp 280.000
+    Gula Pasir 1kg         | 2      | Pcs       | Rp 15.000    | Rp 30.000
+  }
+  .
+  {+
+    { Subtotal          | . | Rp 310.000
+      Diskon            | . | <color:red>Rp 0
+      <b>Total          | . | <b>Rp 310.000
+      Bayar             | . | Rp 350.000
+      Kembalian         | . | Rp 40.000 }
+  }
+  --
+  { . | . | [<&print> Cetak Struk] | [ Tutup ] }
+}
+@endsalt

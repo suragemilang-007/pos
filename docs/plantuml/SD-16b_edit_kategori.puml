@@ -1,0 +1,72 @@
+@startuml SD-16b_Edit_Kategori
+title SD-16b: Edit Kategori Produk
+autonumber
+skinparam sequenceMessageAlign center
+skinparam responseMessageBelowArrow true
+
+actor "Admin Gudang / Owner" as U
+boundary "View Kategori\n(Blade + Axios)" as V
+control "Middleware\n(auth.jwt, role)" as M
+control "KategoriProdukController" as C
+control "UpdateKategoriRequest" as R
+control "KategoriProdukService" as S
+entity "KategoriProduk" as K
+database "MySQL\n(kategori_produk)" as DB
+
+U -> V : Klik "Edit" pada baris kategori
+V -> V : bukaModalEdit(id)\nisi form dari cache kategoriList
+note over V : Tidak ada request tambahan,\ndata diambil dari hasil GET sebelumnya
+U -> V : Ubah nama_kategori / deskripsi\nklik "Perbarui"
+V -> V : simpanKategori()\ncek nama tidak kosong
+
+alt Nama kosong
+    V --> U : Error inline "Nama kategori wajib diisi"
+else Nama terisi
+    V -> M : PUT /api/gudang/kategori/{id}\n{nama_kategori, deskripsi}
+    M -> M : Validasi token JWT & role
+    alt Token tidak valid / role tidak diizinkan
+        M --> V : 401 / 403
+        V --> U : Toast "Gagal menyimpan"
+    else Lolos
+        M -> C : update(request, id)
+        C -> R : rules()\nrequired, max:100, unique ignore(id)
+        R -> DB : SELECT nama_kategori WHERE id != {id}
+        DB --> R : hasil
+        alt Validasi gagal (nama dipakai kategori lain)
+            R --> V : 422 {message, errors.nama_kategori}
+            V --> U : Error inline di bawah field nama
+        else Valid
+            C -> S : update(id, validated)
+            S -> K : KategoriProduk::findOrFail(id)
+            K -> DB : SELECT * FROM kategori_produk WHERE id = ?
+            DB --> K : row / kosong
+            alt Kategori tidak ditemukan
+                K --> V : 404
+                V --> U : Toast "Gagal menyimpan"
+            else Ditemukan
+                S -> K : update(nama_kategori, deskripsi)
+                K -> DB : UPDATE kategori_produk SET ... WHERE id = ?
+                DB --> K : OK
+                K --> S : true
+                S --> C : true
+                C -> K : KategoriProduk::find(id)
+                K -> DB : SELECT * WHERE id = ?
+                DB --> K : row terbaru
+                K --> C : KategoriProduk
+                C --> V : 200 {data, message:\n"Kategori berhasil diperbarui"}
+                V -> V : tutupModalForm()
+                V --> U : Toast sukses
+                V -> M : GET /api/gudang/kategori (loadKategori)
+                M -> C : indexWithCount()
+                C -> S : getAll()
+                S -> DB : SELECT ... withCount(produk as jumlah_produk)
+                DB --> S : daftar kategori
+                S --> C : Collection
+                C --> V : 200 {data}
+                V --> U : Tabel kategori diperbarui
+            end
+        end
+    end
+end
+
+@enduml

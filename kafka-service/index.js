@@ -128,7 +128,7 @@ async function main() {
     console.log('[MAIN] WebSocket server siap');
 
     // ── Step 4: HTTP server (Producer endpoint) ───────────────────────────────
-    const http   = await startHttp(pool, kafka);
+    const http   = await startHttp(pool, kafka, wsService);
     httpServer   = http.server;
     httpProducer = http.producer;
     console.log('[MAIN] HTTP producer endpoint siap');
