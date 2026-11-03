@@ -68,7 +68,6 @@
 | customer_id | INT UNSIGNED | YES | FK→customers | NULL | |
 | no_transaksi | VARCHAR(30) | NO | UNIQUE | — | TRX-YYYYMMDD-XXXXX |
 | subtotal | DECIMAL(10,2) | NO | | 0.00 | |
-| diskon | DECIMAL(10,2) | NO | | 0.00 | |
 | total | DECIMAL(10,2) | NO | | 0.00 | |
 | bayar | DECIMAL(10,2) | NO | | 0.00 | |
 | kembalian | DECIMAL(10,2) | NO | | 0.00 | |
@@ -88,7 +87,6 @@
 | isi_satuan | INT | NO | | 1 | Snapshot |
 | qty | INT | NO | | — | |
 | harga_satuan | DECIMAL(10,2) | NO | | — | Snapshot |
-| diskon_item | DECIMAL(10,2) | NO | | 0.00 | |
 | subtotal | DECIMAL(10,2) | NO | | — | |
 
 ### Tabel: `retur_penjualan`

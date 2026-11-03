@@ -218,10 +218,6 @@
                         <span>Subtotal</span>
                         <span id="modal-subtotal" class="font-mono">—</span>
                     </div>
-                    <div class="flex justify-between text-sm text-gray-600 dark:text-gray-400">
-                        <span>Diskon</span>
-                        <span id="modal-diskon" class="font-mono text-red-500 dark:text-red-400">—</span>
-                    </div>
                     <div class="flex justify-between text-sm font-bold text-gray-900 dark:text-gray-100 pt-2 border-t border-gray-200 dark:border-gray-600">
                         <span>Total</span>
                         <span id="modal-total" class="font-mono text-indigo-600 dark:text-indigo-400">—</span>
@@ -437,7 +433,6 @@ async function bukaDetail(id) {
             <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/30">
                 <td class="px-3 py-2.5">
                     <p class="text-sm text-gray-800 dark:text-gray-200">${esc(item.nama_produk ?? '—')}</p>
-                    ${item.is_bonus ? '<span class="text-xs text-green-600 dark:text-green-400 font-medium">Bonus</span>' : ''}
                 </td>
                 <td class="px-3 py-2.5 text-center text-sm text-gray-700 dark:text-gray-300 font-mono">${item.qty}</td>
                 <td class="px-3 py-2.5 text-center text-sm text-gray-600 dark:text-gray-400">${esc(item.nama_satuan)}</td>
@@ -450,9 +445,7 @@ async function bukaDetail(id) {
             </tr>`).join('');
 
         // Total
-        const diskon = (t.subtotal ?? 0) - (t.total ?? 0) + (t.diskon ?? 0);
         document.getElementById('modal-subtotal').textContent  = 'Rp ' + fmt(t.subtotal ?? 0);
-        document.getElementById('modal-diskon').textContent    = t.diskon > 0 ? '- Rp ' + fmt(t.diskon) : 'Rp 0';
         document.getElementById('modal-total').textContent     = 'Rp ' + fmt(t.total ?? 0);
         document.getElementById('modal-bayar').textContent     = 'Rp ' + fmt(t.bayar ?? 0);
         document.getElementById('modal-kembalian').textContent = 'Rp ' + fmt(t.kembalian ?? 0);

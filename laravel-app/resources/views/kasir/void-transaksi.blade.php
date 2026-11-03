@@ -361,24 +361,16 @@ function renderTransaksi(data) {
 
     // Tabel item
     const tbody = document.getElementById('tbody-items');
-    tbody.innerHTML = (data.items || []).map(item => {
-        const isBonus = item.is_bonus;
-        return `
-        <tr class="${isBonus ? 'bg-green-50 dark:bg-green-900/10' : ''}">
+    tbody.innerHTML = (data.items || []).map(item => `
+        <tr>
             <td class="px-4 py-3">
                 <span class="text-sm font-medium text-gray-900 dark:text-gray-100">${esc(item.nama_produk || '—')}</span>
-                ${isBonus ? `<span class="ml-1.5 text-xs text-green-600 dark:text-green-400 font-medium">(Bonus)</span>` : ''}
             </td>
             <td class="px-4 py-3 text-center text-xs text-gray-600 dark:text-gray-400">${esc(item.nama_satuan)}</td>
             <td class="px-4 py-3 text-center text-sm text-gray-900 dark:text-gray-100 font-mono">${item.qty}</td>
-            <td class="px-4 py-3 text-right text-sm font-mono text-gray-600 dark:text-gray-400">
-                ${isBonus ? '<span class="text-green-600 dark:text-green-400">Rp 0</span>' : 'Rp ' + fmt(item.harga_satuan)}
-            </td>
-            <td class="px-4 py-3 text-right text-sm font-mono text-gray-900 dark:text-gray-100">
-                ${isBonus ? '<span class="text-green-600 dark:text-green-400">Rp 0</span>' : 'Rp ' + fmt(item.subtotal)}
-            </td>
-        </tr>`;
-    }).join('');
+            <td class="px-4 py-3 text-right text-sm font-mono text-gray-600 dark:text-gray-400">Rp ${fmt(item.harga_satuan)}</td>
+            <td class="px-4 py-3 text-right text-sm font-mono text-gray-900 dark:text-gray-100">Rp ${fmt(item.subtotal)}</td>
+        </tr>`).join('');
 
     // Tampilkan section
     document.getElementById('section-transaksi').classList.remove('hidden');

@@ -202,13 +202,6 @@ class ProdukService
 
     /**
      * Cari produk aktif berdasarkan kode barcode.
-     *
-     * Update v3 (SD-07): tambah eager load promoAktif beserta relasi nested-nya.
-     * Frontend membutuhkan promo_aktif hari ini agar bisa menghitung diskon/bonus
-     * di sisi client (kalkulasi promo TIDAK dilakukan di backend — CLAUDE.md §5.6).
-     *
-     * bonusProduk.satuanList di-load agar controller bisa panggil
-     * buildSatuanTersedia() tanpa N+1 query saat ada banyak promo bonus_produk_lain.
      */
     public function getByKode(string $kode): ?Produk
     {
@@ -221,14 +214,7 @@ class ProdukService
                 $q->where('kode_produk', $kode)
                   ->orWhereHas('satuanList', fn ($s) => $s->where('barcode', $kode));
             })
-            ->with([
-                'satuanList',
-                'promoAktif' => fn ($q) => $q->with([
-                    'satuanSyarat',
-                    'bonusProduk.satuanList',
-                    'bonusSatuan',
-                ]),
-            ])
+            ->with('satuanList')
             ->first();
     }
 }

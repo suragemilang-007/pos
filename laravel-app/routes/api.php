@@ -13,7 +13,6 @@ use App\Http\Controllers\ReturPenjualanController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\PembayaranPembelianController;
 use App\Http\Controllers\PenyesuaianStokController;
-use App\Http\Controllers\PromoController;
 use App\Http\Controllers\TransaksiController;
 use App\Http\Controllers\VoidTransaksiController;
 use Illuminate\Support\Facades\Route;
@@ -137,13 +136,6 @@ Route::middleware(['auth.jwt', 'role:admin_gudang,owner'])->prefix('gudang')->gr
     // SD-20: Penyesuaian Stok → async via Kafka → 202
     Route::get ('/penyesuaian-stok', [PenyesuaianStokController::class, 'index']);
     Route::post('/penyesuaian-stok', [PenyesuaianStokController::class, 'store']);
-
-    // SD-18: Manajemen Promo Produk — toggle SEBELUM {id} agar tidak terambil sebagai id
-    Route::patch('/promo/{id}/toggle', [PromoController::class, 'toggle']);
-    Route::get   ('/promo',            [PromoController::class, 'index']);
-    Route::post  ('/promo',            [PromoController::class, 'store']);
-    Route::put   ('/promo/{id}',       [PromoController::class, 'update']);
-    Route::delete('/promo/{id}',       [PromoController::class, 'destroy']);
 });
 
 // ─────────────────────────────────────────────────────────

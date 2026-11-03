@@ -458,7 +458,7 @@ repeat while (Tambah Item Lagi?) is (Ya)
 
 |#D5F5E3| Laravel (pos_laravel) |
 :Validasi Input;
-:Hitung subtotal, diskon,\ntotal, kembalian;
+:Hitung subtotal,\ntotal, kembalian;
 :Generate no_transaksi;
 :DB Transaction:\nINSERT transaksi (status=PENDING)\nINSERT detail_transaksi (snapshot);
 :COMMIT ke Database;
@@ -610,7 +610,6 @@ entity "**transaksi**" as transaksi {
   customer_id : INT <<FK, nullable>>
   no_transaksi : VARCHAR(30)
   subtotal : DECIMAL(10,2)
-  diskon : DECIMAL(10,2)
   total : DECIMAL(10,2)
   bayar : DECIMAL(10,2)
   kembalian : DECIMAL(10,2)
@@ -630,7 +629,6 @@ entity "**detail_transaksi**" as detail {
   isi_satuan : INT
   qty : INT
   harga_satuan : DECIMAL(10,2)
-  diskon_item : DECIMAL(10,2)
   subtotal : DECIMAL(10,2)
 }
 
@@ -654,9 +652,8 @@ transaksi      ||--o{ detail         : "transaksi_id"
 | no_transaksi | VARCHAR(20) | Nomor unik transaksi (misal: TRX-20260531-001) |
 | user_id | INT UNSIGNED | Foreign key ke tabel `users` (kasir yang memproses) |
 | customer_id | INT UNSIGNED | Foreign key ke `customers`, nullable (walk-in) |
-| subtotal | DECIMAL(10,2) | Jumlah sebelum diskon |
-| diskon | DECIMAL(10,2) | Total diskon keseluruhan |
-| total | DECIMAL(10,2) | Nilai akhir (subtotal − diskon) |
+| subtotal | DECIMAL(10,2) | Jumlah seluruh subtotal item |
+| total | DECIMAL(10,2) | Nilai akhir yang harus dibayar (sama dengan subtotal) |
 | bayar | DECIMAL(10,2) | Nominal uang yang dibayarkan pelanggan |
 | kembalian | DECIMAL(10,2) | Selisih bayar dan total |
 | metode_bayar | ENUM | tunai, transfer, qris |
@@ -676,8 +673,7 @@ transaksi      ||--o{ detail         : "transaksi_id"
 | isi_satuan | INT | Snapshot konversi satuan (misal karton = 96 pcs) |
 | qty | INT | Jumlah item yang dibeli |
 | harga_satuan | DECIMAL(10,2) | Snapshot harga saat transaksi |
-| diskon_item | DECIMAL(10,2) | Diskon per item (default 0) |
-| subtotal | DECIMAL(10,2) | (harga_satuan × qty) − diskon_item |
+| subtotal | DECIMAL(10,2) | harga_satuan × qty |
 
 **Tabel 3.8. Deskripsi Tabel `produk`**
 

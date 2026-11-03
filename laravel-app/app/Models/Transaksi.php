@@ -24,7 +24,6 @@ class Transaksi extends Model
         'customer_id',
         'no_transaksi',
         'subtotal',
-        'diskon',
         'total',
         'bayar',
         'kembalian',
@@ -38,7 +37,6 @@ class Transaksi extends Model
         return [
             // Semua nilai keuangan di-cast decimal:2 untuk konsistensi DECIMAL(10,2) MySQL
             'subtotal'           => 'decimal:2',
-            'diskon'             => 'decimal:2',
             'total'              => 'decimal:2',
             'bayar'              => 'decimal:2',
             'kembalian'          => 'decimal:2',

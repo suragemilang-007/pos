@@ -166,10 +166,6 @@
                     <span class="text-gray-500 dark:text-gray-400">Subtotal</span>
                     <span id="detail-subtotal" class="font-mono text-gray-900 dark:text-gray-100"></span>
                 </div>
-                <div class="flex justify-between text-sm">
-                    <span class="text-gray-500 dark:text-gray-400">Diskon</span>
-                    <span id="detail-diskon" class="font-mono text-gray-900 dark:text-gray-100"></span>
-                </div>
                 <div class="flex justify-between text-base font-bold border-t border-gray-200 dark:border-gray-700 pt-2 mt-2">
                     <span class="text-gray-900 dark:text-gray-100">Total</span>
                     <span id="detail-total" class="font-mono text-indigo-600 dark:text-indigo-400"></span>
@@ -379,7 +375,6 @@ async function lihatDetailTransaksi(trxId) {
         // Footer
         const METODE = { tunai: 'Tunai', transfer: 'Transfer', qris: 'QRIS' };
         document.getElementById('detail-subtotal').textContent   = 'Rp ' + fmt(t.subtotal);
-        document.getElementById('detail-diskon').textContent     = 'Rp ' + fmt(t.diskon ?? 0);
         document.getElementById('detail-total').textContent      = 'Rp ' + fmt(t.total);
         document.getElementById('detail-metode').textContent     = METODE[t.metode_bayar] ?? t.metode_bayar;
         document.getElementById('detail-bayar').textContent      = 'Rp ' + fmt(t.bayar);

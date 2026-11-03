@@ -250,15 +250,7 @@ class ProdukController extends Controller
     // ─────────────────────────────────────────────────────────────────────────
 
     /**
-     * GET /api/kasir/produk/{kode}/stok — SD-07 (update v3: tambah promo_aktif)
-     *
-     * promo_aktif digunakan Frontend JavaScript untuk:
-     * - Menampilkan label promo di UI kasir ("Beli 5 Gratis 1")
-     * - Menghitung item bonus dan diskon secara lokal (TIDAK di backend — CLAUDE.md §5.6)
-     * - Menyertakan promo_id + is_bonus saat POST /transaksi
-     *
-     * bonus_produk.satuan_tersedia disertakan agar frontend tahu satuan item bonus
-     * tanpa perlu request tambahan ke endpoint lain.
+     * GET /api/kasir/produk/{kode}/stok — SD-07
      */
     public function cekStok(string $kode): JsonResponse
     {
@@ -279,25 +271,6 @@ class ProdukController extends Controller
                 'qty_stok'        => $produk->qty_stok,
                 'stok_minimum'    => $produk->stok_minimum,
                 'satuan_tersedia' => $this->produkSatuanService->buildSatuanTersedia($produk),
-                // ── SD-07 v3: promo aktif hari ini ──────────────────────────
-                'promo_aktif'     => $produk->promoAktif->map(fn ($p) => [
-                    'id'               => $p->id,
-                    'nama_promo'       => $p->nama_promo,
-                    'tipe_promo'       => $p->tipe_promo,
-                    'min_qty'          => (int) $p->min_qty,
-                    'produk_satuan_id' => $p->produk_satuan_id,
-                    'bonus_qty'        => $p->bonus_qty !== null ? (int) $p->bonus_qty : null,
-                    // bonus_produk: null untuk tipe selain bonus_produk_lain
-                    // satuanList sudah eager-loaded di getByKode() — tidak ada N+1 query
-                    'bonus_produk'     => $p->bonusProduk ? [
-                        'id'              => $p->bonusProduk->id,
-                        'nama_produk'     => $p->bonusProduk->nama_produk,
-                        'satuan_tersedia' => $this->produkSatuanService->buildSatuanTersedia($p->bonusProduk),
-                    ] : null,
-                    'bonus_satuan_id'  => $p->bonus_satuan_id,
-                    'diskon_nilai'     => $p->diskon_nilai !== null ? (float) $p->diskon_nilai : null,
-                    'keterangan'       => $p->keterangan,
-                ])->values(),
             ],
         ], 200);
     }

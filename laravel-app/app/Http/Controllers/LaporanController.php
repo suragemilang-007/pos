@@ -10,7 +10,7 @@ use Illuminate\Http\Response;
 class LaporanController extends Controller
 {
     // Jenis laporan yang diizinkan — validasi di controller agar pesan error jelas
-    private const JENIS_VALID = ['penjualan', 'stok', 'pembelian', 'void', 'promo', 'hutang', 'penyesuaian-stok'];
+    private const JENIS_VALID = ['penjualan', 'stok', 'pembelian', 'void', 'hutang', 'penyesuaian-stok'];
 
     public function __construct(
         private readonly LaporanService $laporanService
@@ -38,7 +38,7 @@ class LaporanController extends Controller
         $data = $this->getData($jenis, $dari, $sampai, $request);
 
         // Metrik bisnis hanya relevan untuk laporan penjualan & pembelian
-        // Void, promo, hutang, dan penyesuaian adalah laporan operasional
+        // Void, hutang, dan penyesuaian adalah laporan operasional
         $metrik = in_array($jenis, ['penjualan', 'pembelian'])
             ? $this->laporanService->getMetrikBisnis($dari, $sampai)
             : null;
@@ -104,7 +104,6 @@ class LaporanController extends Controller
             ),
             'pembelian' => $this->laporanService->generateLaporanPembelian($dari, $sampai),
             'void' => $this->laporanService->generateLaporanVoid($dari, $sampai),
-            'promo' => $this->laporanService->generateLaporanPromo($dari, $sampai),
             'hutang' => $this->laporanService->generateLaporanHutang(
                 $request->only(['supplier_id', 'status'])
             ),

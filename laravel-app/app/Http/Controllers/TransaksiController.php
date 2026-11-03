@@ -66,7 +66,6 @@ class TransaksiController extends Controller
                 'customer'           => $t->customer ? ['id' => $t->customer->id, 'nama' => $t->customer->nama] : null,
                 'kasir'              => $t->user ? ['id' => $t->user->id, 'nama' => $t->user->nama] : null,
                 'subtotal'           => (float) $t->subtotal,
-                'diskon'             => (float) $t->diskon,
                 'total'              => (float) $t->total,
                 'bayar'              => (float) $t->bayar,
                 'kembalian'          => (float) $t->kembalian,
@@ -283,7 +282,6 @@ class TransaksiController extends Controller
                     'qty' => $d->qty,
                     'harga_satuan' => (float) $d->harga_satuan,
                     'subtotal' => (float) $d->subtotal,
-                    'is_bonus' => (bool) $d->is_bonus,
                 ])->values(),
                 // ── SD-17: Info void ─────────────────────────────────────────
                 'can_void' => $voidInfo['eligible'],

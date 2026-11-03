@@ -16,13 +16,10 @@ class DetailTransaksi extends Model
         'transaksi_id',
         'produk_id',
         'produk_satuan_id',
-        'promo_id',
-        'is_bonus',
         'nama_satuan',
         'isi_satuan',
         'qty',
         'harga_satuan',
-        'diskon_item',
         'subtotal',
     ];
 
@@ -31,11 +28,7 @@ class DetailTransaksi extends Model
         return [
             // harga_satuan adalah snapshot — nilai ini tidak berubah meski harga produk berubah
             'harga_satuan' => 'decimal:2',
-            'diskon_item'  => 'decimal:2',
             'subtotal'     => 'decimal:2',
-            // is_bonus: 1 = item gratis promo, harga_satuan=0, stok tetap dikurangi
-            // Item is_bonus TIDAK dikembalikan stoknya saat void (CLAUDE.md §3 void rule)
-            'is_bonus'     => 'boolean',
         ];
     }
 
@@ -53,11 +46,5 @@ class DetailTransaksi extends Model
     {
         // nullable — produk_satuan_id bisa null jika kasir input manual
         return $this->belongsTo(ProdukSatuan::class, 'produk_satuan_id');
-    }
-
-    // Promo yang diterapkan pada item ini — nullable untuk item reguler tanpa promo
-    public function promo(): BelongsTo
-    {
-        return $this->belongsTo(ProdukPromo::class, 'promo_id');
     }
 }

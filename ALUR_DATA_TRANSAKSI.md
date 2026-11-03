@@ -40,8 +40,7 @@ Content-Type: application/json
       "nama_satuan": "Karton",
       "isi_satuan": 10,
       "qty": 2,
-      "harga_satuan": 145000,
-      "diskon_item": 0
+      "harga_satuan": 145000
     },
     {
       "produk_id": 2,
@@ -49,8 +48,7 @@ Content-Type: application/json
       "nama_satuan": "Dus",
       "isi_satuan": 12,
       "qty": 1,
-      "harga_satuan": 190000,
-      "diskon_item": 0
+      "harga_satuan": 190000
     }
   ],
   "customer_id": 5,
@@ -182,8 +180,7 @@ HTTP 202 Accepted
 ### A. Kalkulasi di PHP
 ```php
 $subtotal  = (2 × 145000) + (1 × 190000) = 480000
-$diskon    = 0 + 0                        = 0
-$total     = 480000 - 0                   = 480000
+$total     = $subtotal                    = 480000
 $kembalian = 500000 - 480000              = 20000
 $noTransaksi = "TRX-20260624-00003"
 ```
@@ -194,11 +191,11 @@ $noTransaksi = "TRX-20260624-00003"
 ```sql
 INSERT INTO transaksi (
   user_id, customer_id, no_transaksi,
-  subtotal, diskon, total, bayar, kembalian,
+  subtotal, total, bayar, kembalian,
   metode_bayar, status
 ) VALUES (
   2, 5, 'TRX-20260624-00003',
-  480000, 0, 480000, 500000, 20000,
+  480000, 480000, 500000, 20000,
   'tunai', 'PENDING'
 );
 -- AUTO_INCREMENT id = 47
@@ -209,11 +206,11 @@ INSERT INTO transaksi (
 INSERT INTO detail_transaksi (
   transaksi_id, produk_id, produk_satuan_id,
   nama_satuan,  isi_satuan,
-  qty, harga_satuan, diskon_item, subtotal
+  qty, harga_satuan, subtotal
 ) VALUES (
   47, 1, 3,
   'Karton', 10,
-  2, 145000, 0, 290000
+  2, 145000, 290000
 );
 ```
 
@@ -222,11 +219,11 @@ INSERT INTO detail_transaksi (
 INSERT INTO detail_transaksi (
   transaksi_id, produk_id, produk_satuan_id,
   nama_satuan,  isi_satuan,
-  qty, harga_satuan, diskon_item, subtotal
+  qty, harga_satuan, subtotal
 ) VALUES (
   47, 2, 7,
   'Dus', 12,
-  1, 190000, 0, 190000
+  1, 190000, 190000
 );
 ```
 
@@ -250,8 +247,7 @@ INSERT INTO detail_transaksi (
       "namaSatuan":     "Karton",
       "isiSatuan":      10,
       "qty":            2,
-      "hargaSatuan":    145000,
-      "diskonItem":     0
+      "hargaSatuan":    145000
     },
     {
       "produkId":       2,
@@ -259,8 +255,7 @@ INSERT INTO detail_transaksi (
       "namaSatuan":     "Dus",
       "isiSatuan":      12,
       "qty":            1,
-      "hargaSatuan":    190000,
-      "diskonItem":     0
+      "hargaSatuan":    190000
     }
   ],
   "customerId":  5,

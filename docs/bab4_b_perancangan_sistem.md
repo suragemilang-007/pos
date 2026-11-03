@@ -506,9 +506,9 @@ kepada kasir.
 ### B.4.3 Paket Inventory (CD-3)
 
 Gambar [B.42] menampilkan *class diagram* paket `Inventory` yang merupakan paket
-dengan jumlah kelas terbanyak dalam sistem: delapan model dan delapan *service*.
+dengan jumlah kelas terbanyak dalam sistem: tujuh model dan tujuh *service*.
 Kepadatan ini mencerminkan cakupan tanggung jawab inventaris yang meluas — tidak hanya
-produk dan stok, tetapi juga pelanggan, *supplier*, kategori, promosi, dan penyesuaian
+produk dan stok, tetapi juga pelanggan, *supplier*, kategori, dan penyesuaian
 stok sebagai domain yang secara logis berkaitan dengan inventaris toko.
 
 Kelas `Produk` tidak memiliki atribut `hargaJual` secara langsung. Harga jual
@@ -521,16 +521,6 @@ menghitung harga per satuan dasar untuk perbandingan efisiensi antar satuan, dan
 di *service* — didasarkan pada prinsip enkapsulasi: objek yang mengetahui datanya
 sendiri lebih tepat menanggung tanggung jawab kalkulasi yang hanya bergantung pada
 data internal tersebut, sehingga pemanggil tidak perlu mengetahui formula konversi.
-
-Kelas `ProdukPromo` mendefinisikan dua set atribut untuk dua tipe promosi: atribut
-berbasis diskon (`diskonNilai`) dan atribut berbasis bonus (`bonusQty`, `bonusProdukId`,
-`bonusSatuanId`). Dua set ini secara logika bersifat *mutually exclusive* — promosi
-diskon tidak menggunakan atribut bonus, dan sebaliknya — namun keduanya ditempatkan
-dalam satu kelas yang memanfaatkan nilai `NULL` untuk kolom yang tidak relevan. Atribut
-`berlakuDari`, `berlakuSampai`, dan `isActive` memungkinkan manajemen siklus hidup
-promosi yang fleksibel: promosi dapat dijadwalkan untuk periode tertentu secara otomatis
-dan dinonaktifkan secara manual sebelum masa berlaku habis melalui metode `toggle(id)`
-pada `PromoService`.
 
 Kelas `PenyesuaianStok` mendefinisikan dua metode komputasi `getIsTipeTambah()` dan
 `getIsTipeKurang()` yang mengembalikan boolean berdasarkan nilai kolom `tipe`. Kedua

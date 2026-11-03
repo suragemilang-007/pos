@@ -41,13 +41,9 @@ class TransaksiService
         string $metodeBayar
     ): Transaksi {
         // ── a. Hitung nilai keuangan dari items ───────────────────────────────
-        $subtotal = (float) collect($items)->sum(
-            fn($item) => $item['harga_satuan'] * $item['qty']
-        );
-        $diskon = (float) collect($items)->sum(
-            fn($item) => $item['diskon_item'] ?? 0
-        );
-        $total = $this->calculateTotal($items);
+        // Tidak ada diskon, sehingga subtotal = total
+        $subtotal = $this->calculateTotal($items);
+        $total = $subtotal;
         $kembalian = $bayar - $total;
 
         // ── b. Generate nomor dokumen transaksi ───────────────────────────────
@@ -68,13 +64,12 @@ class TransaksiService
          * Trade-off: jika publish gagal SETELAH commit, transaksi tetap PENDING selamanya.
          * Ini ditangani di sistem monitoring terpisah (cek transaksi PENDING > threshold waktu).
          */
-        $transaksi = DB::transaction(function () use ($items, $customerId, $userId, $bayar, $metodeBayar, $subtotal, $diskon, $total, $kembalian, $noTransaksi) {
+        $transaksi = DB::transaction(function () use ($items, $customerId, $userId, $bayar, $metodeBayar, $subtotal, $total, $kembalian, $noTransaksi) {
             $trx = Transaksi::create([
                 'user_id' => $userId,
                 'customer_id' => $customerId,
                 'no_transaksi' => $noTransaksi,
                 'subtotal' => $subtotal,
-                'diskon' => $diskon,
                 'total' => $total,
                 'bayar' => $bayar,
                 'kembalian' => $kembalian,
@@ -95,10 +90,8 @@ class TransaksiService
                     'isi_satuan' => $item['isi_satuan'],
                     'qty' => $item['qty'],
                     'harga_satuan' => $item['harga_satuan'],
-                    'diskon_item' => $item['diskon_item'] ?? 0,
                     // subtotal per baris dihitung saat INSERT — tidak ada kolom kalkulasi di detail
-                    'subtotal' => $item['harga_satuan'] * $item['qty']
-                        - ($item['diskon_item'] ?? 0),
+                    'subtotal' => $item['harga_satuan'] * $item['qty'],
                 ]);
             }
 
@@ -139,13 +132,12 @@ class TransaksiService
 
     /**
      * Hitung total transaksi dari daftar item.
-     * Total = Σ (harga_satuan × qty − diskon_item)
+     * Total = Σ (harga_satuan × qty)
      */
     public function calculateTotal(array $items): float
     {
         return (float) collect($items)->sum(
-            fn($item) => ($item['harga_satuan'] * $item['qty'])
-            - ($item['diskon_item'] ?? 0)
+            fn($item) => $item['harga_satuan'] * $item['qty']
         );
     }
 
@@ -215,19 +207,8 @@ class TransaksiService
                 <td style='text-align:right'>Rp {$harga}</td>
                 <td style='text-align:right'>Rp {$subtotal}</td>
             </tr>";
-
-            if ($detail->diskon_item > 0) {
-                $diskonItem = number_format($detail->diskon_item, 0, ',', '.');
-                $barisItem .= "
-            <tr>
-                <td colspan='3' style='font-size:0.85em;color:#666'>  Diskon item</td>
-                <td style='text-align:right;color:#e53e3e'>-Rp {$diskonItem}</td>
-            </tr>";
-            }
         }
 
-        $subtotalFmt = number_format($trx->subtotal, 0, ',', '.');
-        $diskonFmt = number_format($trx->diskon, 0, ',', '.');
         $totalFmt = number_format($trx->total, 0, ',', '.');
         $bayarFmt = number_format($trx->bayar, 0, ',', '.');
         $kembalianFmt = number_format($trx->kembalian, 0, ',', '.');
@@ -281,14 +262,6 @@ class TransaksiService
             <div class="divider"></div>
 
             <table>
-                <tr>
-                    <td>Subtotal</td>
-                    <td style="text-align:right">Rp {$subtotalFmt}</td>
-                </tr>
-                <tr>
-                    <td>Diskon</td>
-                    <td style="text-align:right;color:#e53e3e">-Rp {$diskonFmt}</td>
-                </tr>
                 <tr class="total-row">
                     <td>TOTAL</td>
                     <td style="text-align:right">Rp {$totalFmt}</td>

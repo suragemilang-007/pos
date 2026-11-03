@@ -319,7 +319,6 @@ stock.updated          → SEMUA kasir aktif → stok di layar diperbarui otomat
 | Detail pembelian | `resources/views/gudang/pembelian/show.blade.php` | Admin Gudang |
 | Hutang dagang | `resources/views/gudang/hutang/index.blade.php` | Admin Gudang |
 | Penyesuaian stok | `resources/views/gudang/penyesuaian-stok/index.blade.php` | Admin Gudang |
-| Promo | `resources/views/gudang/promo/index.blade.php` | Admin Gudang |
 | Data supplier | `resources/views/gudang/supplier/index.blade.php` | Admin Gudang |
 | Kategori produk | `resources/views/gudang/kategori/index.blade.php` | Admin Gudang |
 | Dashboard owner | `resources/views/owner/dashboard.blade.php` | Owner |
@@ -447,8 +446,7 @@ Kasir klik [Bayar / Proses Transaksi]
                   nama_satuan,      // snapshot
                   isi_satuan,       // WAJIB untuk konversi stok
                   qty,
-                  harga_satuan,
-                  diskon_item
+                  harga_satuan
               },
               ...
           ],
@@ -501,7 +499,6 @@ rules() → dipanggil otomatis oleh Laravel sebelum Controller:
   items.*.isi_satuan       → required, integer, min:1   ← KRITIS
   items.*.qty              → required, integer, min:1
   items.*.harga_satuan     → required, numeric, min:0
-  items.*.diskon_item      → nullable, numeric, min:0
   customer_id              → nullable, exists:customers,id
   metode_bayar             → required, in:tunai,transfer,qris
   bayar                    → required, numeric, min:0
@@ -562,9 +559,8 @@ public function store(StoreTransaksiRequest $request): JsonResponse
 public function create(...): Transaksi
 {
     // a. Hitung nilai keuangan
-    $subtotal = collect($items)->sum(fn($i) => $i['harga_satuan'] * $i['qty']);
-    $diskon   = collect($items)->sum(fn($i) => $i['diskon_item'] ?? 0);
-    $total    = $this->calculateTotal($items);   // baris 133
+    $subtotal = $this->calculateTotal($items);   // Σ harga_satuan × qty
+    $total    = $subtotal;                       // tidak ada diskon
     $kembalian = $bayar - $total;
 
     // b. Generate nomor dokumen: TRX-YYYYMMDD-XXXXX

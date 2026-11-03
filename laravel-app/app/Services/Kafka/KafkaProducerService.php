@@ -60,7 +60,6 @@ class KafkaProducerService
                 'isiSatuan'     => (int) $d->isi_satuan,   // WAJIB — untuk konversi stok
                 'qty'           => (int) $d->qty,
                 'hargaSatuan'   => (float) $d->harga_satuan,
-                'diskonItem'    => (float) $d->diskon_item,
             ])->values()->all(),
             'customerId'  => $transaksi->customer_id,
             'userId'      => $transaksi->user_id,
@@ -183,14 +182,8 @@ class KafkaProducerService
     /**
      * Publish event void ke Kafka.
      *
-     * KRITIS — hanya item is_bonus=false yang dimasukkan ke payload:
-     * - Item bonus sudah keluar secara fisik dari gudang saat transaksi berlangsung
-     * - Item bonus TIDAK tercatat sebagai penjualan berbayar (harga_satuan=0)
-     * - Jika stok item bonus dikembalikan → stok double-count karena
-     *   pengurangan stok saat transaksi asli sudah mengurangi stok bonus juga
-     *
-     * Query langsung ke detail_transaksi WHERE is_bonus=0 (lebih efisien dari
-     * load-all-then-filter di PHP, apalagi transaksi bisa punya banyak item).
+     * Void membatalkan SEMUA item transaksi, sehingga seluruh baris
+     * detail_transaksi dimasukkan ke payload untuk dikembalikan stoknya.
      *
      * Consumer (voidConsumer.js) prosesnya:
      *   1. Untuk setiap item payload: qty_stok += qty × isiSatuan
@@ -200,9 +193,7 @@ class KafkaProducerService
      */
     public function publishTransactionVoid(VoidTransaksi $void): bool
     {
-        // Query langsung WHERE is_bonus=0 — filter di DB bukan di PHP
         $items = DetailTransaksi::where('transaksi_id', $void->transaksi_id)
-            ->where('is_bonus', 0)
             ->get()
             ->map(fn ($d) => [
                 'produkId'  => $d->produk_id,

@@ -24,8 +24,8 @@ POST /api/auth/logout
 ```
 POST /api/kasir/transaksi
 Body: { items: [{produk_id, produk_satuan_id, nama_satuan,
-                 isi_satuan, qty, harga_satuan, diskon_item}],
-        customer_id?, subtotal, diskon, total, bayar, kembalian,
+                 isi_satuan, qty, harga_satuan}],
+        customer_id?, subtotal, total, bayar, kembalian,
         metode_bayar }
 ← 202: { id_transaksi, no_transaksi, status: "PENDING" }
 [async WS] transaction.completed | transaction.failed | stock.updated
@@ -34,7 +34,7 @@ Body: { items: [{produk_id, produk_satuan_id, nama_satuan,
 ## SD-04: Cetak Struk
 ```
 GET /api/kasir/transaksi/{id}/struk
-← 200: { data: { no_transaksi, items[], subtotal, diskon,
+← 200: { data: { no_transaksi, items[], subtotal,
                  total, bayar, kembalian, metode_bayar } }
 ← 403 | 404
 ```
@@ -174,13 +174,6 @@ POST /api/kasir/transaksi/{id}/void
 Body: { alasan, keterangan? }
 ← 202: { id_void, status: "PENDING" }
 [async WS] void.completed | stock.updated
-```
-
-## SD-18: Manajemen Promo Produk
-```
-GET/POST/PUT /api/gudang/promo/{id?}
-PATCH /api/gudang/promo/{id}/toggle
-DELETE /api/gudang/promo/{id}
 ```
 
 ## SD-19: Pembayaran Hutang Pembelian NEW

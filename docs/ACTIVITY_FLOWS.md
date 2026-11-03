@@ -99,10 +99,6 @@ ALUR:
 - Consumer: TAMBAH stok semua item, UPDATE status='VOIDED'
 - Kafka topic: transaction-events | Event: transaction.void.requested
 
-## AD-18: Manajemen Promo Produk | Tidak via Kafka (untuk CRUD)
-- CRUD promo oleh Admin Gudang
-- Penerapan promo: kalkulasi di Frontend JS (bukan Backend)
-
 ## AD-19: Pembayaran Hutang Pembelian | Tidak via Kafka NEW
 Swimlanes: Frontend → Backend → Database
 

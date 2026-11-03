@@ -327,83 +327,6 @@ class LaporanService
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // LAPORAN PROMO
-    // ─────────────────────────────────────────────────────────────────────────
-
-    /**
-     * Laporan efektivitas promo produk dalam rentang tanggal.
-     *
-     * Hanya transaksi COMPLETED yang dihitung — PENDING/FAILED/VOIDED tidak valid
-     * karena stok mungkin belum/sudah dikembalikan.
-     *
-     * jumlah_diterapkan = COUNT(DISTINCT transaksi_id) WHERE promo_id = ?
-     *   → berapa transaksi yang menggunakan promo ini, bukan berapa baris detail.
-     *
-     * total_item_bonus = SUM(qty) WHERE is_bonus = 1
-     *   → total unit barang yang diberikan gratis (dalam satuan masing-masing item).
-     *
-     * total_nilai_diskon = SUM(diskon_item)
-     *   → total potongan harga yang diberikan kepada pembeli via promo ini.
-     */
-    public function generateLaporanPromo(string $dari, string $sampai): array
-    {
-        $perPromo = DB::table('detail_transaksi as dt')
-            ->selectRaw('
-                pp.id                                          AS promo_id,
-                pp.nama_promo,
-                pp.tipe_promo,
-                COUNT(DISTINCT dt.transaksi_id)               AS jumlah_diterapkan,
-                SUM(CASE WHEN dt.is_bonus = 1
-                         THEN dt.qty ELSE 0 END)              AS total_item_bonus,
-                SUM(dt.diskon_item)                           AS total_nilai_diskon
-            ')
-            ->join('transaksi as t',    't.id',   '=', 'dt.transaksi_id')
-            ->join('produk_promo as pp', 'pp.id',  '=', 'dt.promo_id')
-            ->whereNotNull('dt.promo_id')
-            ->where('t.status', 'COMPLETED')
-            ->whereBetween('t.tanggal_transaksi', [
-                $dari   . ' 00:00:00',
-                $sampai . ' 23:59:59',
-            ])
-            ->groupBy('pp.id', 'pp.nama_promo', 'pp.tipe_promo')
-            ->orderByDesc('jumlah_diterapkan')
-            ->get();
-
-        // Ringkasan: berapa total promo aktif yang dipakai dan total nilai yang diberikan
-        $ringkasan = DB::table('detail_transaksi as dt')
-            ->selectRaw('
-                COUNT(DISTINCT dt.promo_id)    AS total_promo_dipakai,
-                COUNT(DISTINCT dt.transaksi_id) AS total_transaksi_dengan_promo,
-                SUM(dt.diskon_item)            AS total_nilai_diskon_keseluruhan
-            ')
-            ->join('transaksi as t', 't.id', '=', 'dt.transaksi_id')
-            ->whereNotNull('dt.promo_id')
-            ->where('t.status', 'COMPLETED')
-            ->whereBetween('t.tanggal_transaksi', [
-                $dari   . ' 00:00:00',
-                $sampai . ' 23:59:59',
-            ])
-            ->first();
-
-        return [
-            'periode'    => ['dari' => $dari, 'sampai' => $sampai],
-            'ringkasan'  => [
-                'total_promo_dipakai'             => (int)   ($ringkasan->total_promo_dipakai ?? 0),
-                'total_transaksi_dengan_promo'    => (int)   ($ringkasan->total_transaksi_dengan_promo ?? 0),
-                'total_nilai_diskon_keseluruhan'  => (float) ($ringkasan->total_nilai_diskon_keseluruhan ?? 0),
-            ],
-            'per_promo'  => $perPromo->map(fn ($r) => [
-                'promo_id'          => $r->promo_id,
-                'nama_promo'        => $r->nama_promo,
-                'tipe'              => $r->tipe_promo,
-                'jumlah_diterapkan' => (int)   $r->jumlah_diterapkan,
-                'total_item_bonus'  => (int)   $r->total_item_bonus,
-                'total_nilai_diskon'=> (float) $r->total_nilai_diskon,
-            ])->values(),
-        ];
-    }
-
-    // ─────────────────────────────────────────────────────────────────────────
     // LAPORAN HUTANG DAGANG
     // ─────────────────────────────────────────────────────────────────────────
 
@@ -742,14 +665,6 @@ class LaporanService
                 $rows[] = [
                     $v['no_transaksi'], $v['waktu_void'], $v['nama_kasir'],
                     $v['alasan'], $v['total_nilai_void'], $v['status'],
-                ];
-            }
-        } elseif ($jenis === 'promo') {
-            $rows[] = ['Nama Promo', 'Tipe', 'Diterapkan (Transaksi)', 'Item Bonus', 'Total Diskon (Rp)'];
-            foreach ($laporan['per_promo'] as $p) {
-                $rows[] = [
-                    $p['nama_promo'], $p['tipe'], $p['jumlah_diterapkan'],
-                    $p['total_item_bonus'], $p['total_nilai_diskon'],
                 ];
             }
         } elseif ($jenis === 'hutang') {

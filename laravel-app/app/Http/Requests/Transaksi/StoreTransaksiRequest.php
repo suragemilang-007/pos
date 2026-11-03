@@ -33,7 +33,6 @@ class StoreTransaksiRequest extends FormRequest
 
             'items.*.qty'              => ['required', 'integer', 'min:1'],
             'items.*.harga_satuan'     => ['required', 'numeric', 'min:0'],
-            'items.*.diskon_item'      => ['nullable', 'numeric', 'min:0'],
 
             // ── Header transaksi ──────────────────────────────────────────────
             'customer_id'  => ['nullable', 'integer', 'exists:customers,id'],

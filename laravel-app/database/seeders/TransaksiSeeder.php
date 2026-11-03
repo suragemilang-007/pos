@@ -123,11 +123,8 @@ class TransaksiSeeder extends Seeder
 
                 // ── Kalkulasi total ──────────────────────────────────────────
 
-                // Diskon kecil: ~10% peluang, kelipatan Rp 500
-                $diskon = (rand(1, 10) === 1)
-                    ? (float) (rand(1, 4) * 500)
-                    : 0.0;
-                $total  = round($subtotal - $diskon, 2);
+                // Tidak ada diskon, sehingga total = subtotal
+                $total = round($subtotal, 2);
 
                 // Metode bayar: 70% tunai, 20% transfer, 10% qris
                 $metodeBayar = $this->metodeBayarAcak();
@@ -147,7 +144,7 @@ class TransaksiSeeder extends Seeder
 
                 DB::transaction(function () use (
                     $noTrx, $kasirId, $customerId,
-                    $subtotal, $diskon, $total, $bayar, $kembalian,
+                    $subtotal, $total, $bayar, $kembalian,
                     $metodeBayar, $waktu, $items
                 ) {
                     $transaksiId = DB::table('transaksi')->insertGetId([
@@ -155,7 +152,6 @@ class TransaksiSeeder extends Seeder
                         'customer_id'       => $customerId,
                         'no_transaksi'      => $noTrx,
                         'subtotal'          => number_format($subtotal, 2, '.', ''),
-                        'diskon'            => number_format($diskon,   2, '.', ''),
                         'total'             => number_format($total,    2, '.', ''),
                         'bayar'             => number_format($bayar,    2, '.', ''),
                         'kembalian'         => number_format($kembalian, 2, '.', ''),
@@ -174,9 +170,7 @@ class TransaksiSeeder extends Seeder
                             'isi_satuan'      => $item['isi_satuan'],
                             'qty'             => $item['qty'],
                             'harga_satuan'    => number_format($item['harga_satuan'], 2, '.', ''),
-                            'diskon_item'     => '0.00',
                             'subtotal'        => number_format($item['subtotal'],     2, '.', ''),
-                            // promo_id default NULL, is_bonus default 0 — transaksi reguler
                         ]);
 
                         // Kurangi stok produk di DB — bypass Kafka karena ini data historis seeder

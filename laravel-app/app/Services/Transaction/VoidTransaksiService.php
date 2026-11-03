@@ -259,7 +259,7 @@ class VoidTransaksiService
         }
 
         // Publish ke Kafka — Consumer (voidConsumer.js) yang:
-        //   1. TAMBAH stok untuk item non-bonus (qty × isiSatuan)
+        //   1. TAMBAH stok untuk semua item (qty × isiSatuan)
         //   2. UPDATE transaksi SET status='VOIDED'
         //   3. UPDATE void_transaksi SET status='COMPLETED'
         //   4. Push WebSocket 'void.completed' + 'stock.updated'

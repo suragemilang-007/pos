@@ -17,8 +17,7 @@ return new class extends Migration
             // Nomor dokumen bisnis — terpisah dari PK, format: TRX-YYYYMMDD-XXXXX
             $table->string('no_transaksi', 30)->unique();
             $table->decimal('subtotal', 10, 2)->default(0.00);
-            $table->decimal('diskon', 10, 2)->default(0.00);
-            // total = subtotal - diskon, dihitung di Service sebelum dikirim ke Kafka
+            // total dihitung di Service sebelum dikirim ke Kafka (tidak ada diskon, total = subtotal)
             $table->decimal('total', 10, 2)->default(0.00);
             $table->decimal('bayar', 10, 2)->default(0.00);
             $table->decimal('kembalian', 10, 2)->default(0.00);

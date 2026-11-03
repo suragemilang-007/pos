@@ -73,8 +73,7 @@ async function recoverPendingTransactions(producer, pool) {
                     nama_satuan,
                     isi_satuan,
                     qty,
-                    harga_satuan,
-                    diskon_item
+                    harga_satuan
                 FROM detail_transaksi
                 WHERE transaksi_id = ?
             `, [trx.id]);
@@ -95,7 +94,6 @@ async function recoverPendingTransactions(producer, pool) {
                     isiSatuan:      d.isi_satuan,
                     qty:            d.qty,
                     hargaSatuan:    parseFloat(d.harga_satuan),
-                    diskonItem:     parseFloat(d.diskon_item || 0),
                 })),
                 customerId:  trx.customer_id,
                 userId:      trx.user_id,

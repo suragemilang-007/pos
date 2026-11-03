@@ -1,4 +1,4 @@
-'use strict';
+"use strict";
 
 /**
  * config/database.js — MySQL connection pool dengan retry logic.
@@ -13,9 +13,9 @@
  * Jika semua gagal, proses exit agar Docker bisa restart container secara bersih.
  */
 
-const mysql = require('mysql2/promise');
+const mysql = require("mysql2/promise");
 
-const MAX_RETRIES    = 5;
+const MAX_RETRIES = 5;
 const RETRY_DELAY_MS = 5000; // 5 detik antar percobaan
 
 /**
@@ -30,53 +30,56 @@ const RETRY_DELAY_MS = 5000; // 5 detik antar percobaan
  * @throws  {Error} Jika semua retry habis
  */
 async function createPool() {
-    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-        try {
-            const pool = mysql.createPool({
-                // 'mysql' adalah hostname service Docker — JANGAN ganti dengan 'localhost'
-                host:     process.env.DB_HOST     || 'mysql',
-                port:     parseInt(process.env.DB_PORT || '3306'),
-                database: process.env.DB_DATABASE || 'pos_grosir',
-                user:     process.env.DB_USER     || 'pos_user',
-                password: process.env.DB_PASSWORD || '',
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const pool = mysql.createPool({
+        // 'mysql' adalah hostname service Docker — JANGAN ganti dengan 'localhost'
+        host: process.env.DB_HOST || "mysql",
+        port: parseInt(process.env.DB_PORT || "3306"),
+        database: process.env.DB_DATABASE || "pos_grosir",
+        user: process.env.DB_USER || "pos_user",
+        password: process.env.DB_PASSWORD || "",
 
-                // connectionLimit: batas pool — sesuaikan dengan max_connections MySQL.
-                // 10 cukup untuk beban consumer transaction + purchase + return bersamaan.
-                waitForConnections: true,
-                connectionLimit:    10,
-                queueLimit:         0,   // 0 = antrian tak terbatas (tidak reject saat sibuk)
+        // connectionLimit: batas pool — sesuaikan dengan max_connections MySQL.
+        // 10 cukup untuk beban consumer transaction + purchase + return bersamaan.
+        waitForConnections: true,
+        connectionLimit: 10,
+        queueLimit: 0, // 0 = antrian tak terbatas (tidak reject saat sibuk)
 
-                // Timezone WIB agar TIMESTAMP di MySQL dibaca/tulis dalam waktu lokal Indonesia
-                timezone: '+07:00',
-            });
+        // Timezone WIB agar TIMESTAMP di MySQL dibaca/tulis dalam waktu lokal Indonesia
+        timezone: "+07:00",
+      });
 
-            // Ambil satu koneksi sebagai probe — kalau ini berhasil, pool siap dipakai.
-            // Release langsung agar koneksi kembali ke pool.
-            const conn = await pool.getConnection();
-            conn.release();
+      // Ambil satu koneksi sebagai probe — kalau ini berhasil, pool siap dipakai.
+      // Release langsung agar koneksi kembali ke pool.
+      const conn = await pool.getConnection();
+      conn.release();
 
-            console.log(`[DB] MySQL connection pool siap (percobaan ${attempt}/${MAX_RETRIES})`);
-            return pool;
+      console.log(
+        `[DB] MySQL connection pool siap (percobaan ${attempt}/${MAX_RETRIES})`,
+      );
+      return pool;
+    } catch (err) {
+      console.error(
+        `[DB] Koneksi gagal (percobaan ${attempt}/${MAX_RETRIES}): ${err.message}`,
+      );
 
-        } catch (err) {
-            console.error(`[DB] Koneksi gagal (percobaan ${attempt}/${MAX_RETRIES}): ${err.message}`);
-
-            if (attempt < MAX_RETRIES) {
-                console.log(`[DB] Retry dalam ${RETRY_DELAY_MS / 1000} detik...`);
-                await sleep(RETRY_DELAY_MS);
-            } else {
-                // Semua retry habis — lempar error agar index.js bisa handle (exit graceful)
-                throw new Error(
-                    `[DB] MySQL tidak bisa diakses setelah ${MAX_RETRIES} percobaan. ` +
-                    `Pastikan DB_HOST="${process.env.DB_HOST}" benar dan MySQL sudah running.`
-                );
-            }
-        }
+      if (attempt < MAX_RETRIES) {
+        console.log(`[DB] Retry dalam ${RETRY_DELAY_MS / 1000} detik...`);
+        await sleep(RETRY_DELAY_MS);
+      } else {
+        // Semua retry habis — lempar error agar index.js bisa handle (exit graceful)
+        throw new Error(
+          `[DB] MySQL tidak bisa diakses setelah ${MAX_RETRIES} percobaan. ` +
+            `Pastikan DB_HOST="${process.env.DB_HOST}" benar dan MySQL sudah running.`,
+        );
+      }
     }
+  }
 }
 
 function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 module.exports = { createPool };

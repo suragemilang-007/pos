@@ -155,10 +155,6 @@
                     <span>Subtotal</span>
                     <span id="detail-subtotal" class="font-mono"></span>
                 </div>
-                <div id="detail-row-diskon" class="flex justify-between text-red-500 dark:text-red-400">
-                    <span>Diskon</span>
-                    <span id="detail-diskon" class="font-mono"></span>
-                </div>
                 <div class="flex justify-between font-semibold text-gray-900 dark:text-gray-100 text-base pt-1 border-t border-gray-200 dark:border-gray-700">
                     <span>Total</span>
                     <span id="detail-total" class="font-mono"></span>
@@ -346,16 +342,6 @@ async function lihatDetail(trxId) {
         document.getElementById('detail-total').textContent     = fmt(d.total);
         document.getElementById('detail-bayar').textContent     = fmt(d.bayar);
         document.getElementById('detail-kembalian').textContent = fmt(d.kembalian);
-
-        // Sembunyikan baris diskon jika 0
-        const diskon = parseFloat(d.diskon ?? 0);
-        const rowDiskon = document.getElementById('detail-row-diskon');
-        if (diskon > 0) {
-            document.getElementById('detail-diskon').textContent = '-' + fmt(diskon);
-            rowDiskon.classList.remove('hidden');
-        } else {
-            rowDiskon.classList.add('hidden');
-        }
 
         document.getElementById('detail-loading').classList.add('hidden');
         document.getElementById('detail-konten').classList.remove('hidden');

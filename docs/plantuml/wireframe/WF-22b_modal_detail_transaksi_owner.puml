@@ -21,7 +21,6 @@ title WF-22b: Modal Detail Transaksi (Owner)
   .
   {+
     { Subtotal          | . | Rp 310.000
-      Diskon            | . | <color:red>Rp 0
       <b>Total          | . | <b>Rp 310.000
       Bayar             | . | Rp 350.000
       Kembalian         | . | Rp 40.000 }

@@ -7,14 +7,10 @@
  * Hanya memproses event dengan eventType = 'transaction.void.requested'.
  *
  * Tanggung jawab utama:
- * 1. Kembalikan stok semua item NON-bonus ke gudang secara atomik
+ * 1. Kembalikan stok semua item ke gudang secara atomik
  * 2. Update status transaksi menjadi 'VOIDED'
  * 3. Update status void_transaksi menjadi 'COMPLETED'
  * 4. Push notifikasi real-time ke kasir yang bersangkutan dan semua terminal
- *
- * PENTING: Item dengan isBonus=true TIDAK dikirim dalam payload (difilter di
- * KafkaProducerService::publishTransactionVoid() di sisi Laravel). Semua item
- * dalam event.items dapat langsung dikembalikan stoknya tanpa cek isBonus.
  */
 
 const { TOPICS } = require('../config/kafka');

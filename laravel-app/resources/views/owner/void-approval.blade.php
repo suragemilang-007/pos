@@ -313,13 +313,12 @@ async function bukaDetail(voidId) {
             <tr>
                 <td class="px-4 py-2.5 text-sm text-gray-800 dark:text-gray-200">
                     ${esc(item.nama_produk)}
-                    ${item.is_bonus ? '<span class="ml-1 text-xs text-green-600 dark:text-green-400">(Bonus)</span>' : ''}
                 </td>
                 <td class="px-4 py-2.5 text-center text-sm font-mono text-gray-600 dark:text-gray-400">
                     ${item.qty} ${esc(item.nama_satuan)}
                 </td>
                 <td class="px-4 py-2.5 text-right text-sm font-mono text-gray-800 dark:text-gray-200">
-                    ${item.is_bonus ? '<span class="text-green-600 dark:text-green-400">Bonus</span>' : 'Rp ' + fmt(item.subtotal)}
+                    Rp ${fmt(item.subtotal)}
                 </td>
             </tr>`).join('');
     } catch {

@@ -24,8 +24,7 @@ return new class extends Migration
             $table->integer('qty');
             // Snapshot harga saat transaksi — BUKAN FK, nilai ini tidak boleh berubah
             $table->decimal('harga_satuan', 10, 2);
-            $table->decimal('diskon_item', 10, 2)->default(0.00);
-            // subtotal = harga_satuan x qty - diskon_item
+            // subtotal = harga_satuan x qty
             $table->decimal('subtotal', 10, 2);
 
             // Tidak ada timestamps — tabel ini immutable setelah insert
